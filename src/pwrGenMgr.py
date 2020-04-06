@@ -17,6 +17,7 @@ import serial
 import threading
 
 import udpCom
+import serialCom
 import M2PLC221 as m221
 import S7PLC1200 as s71200
 
