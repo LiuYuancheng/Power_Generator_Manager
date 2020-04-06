@@ -2,8 +2,9 @@
 #-----------------------------------------------------------------------------
 # Name:        pwrGenMgr.py
 #
-# Purpose:     power generator auto control manager
-#              
+# Purpose:     power generator auto-control manager. 
+#              GUI -> UDP -> controler-> ModeBus TCP-> PLC               
+#                               +-> Serial Comm-> Power station Arduino
 # Author:       Yuancheng Liu
 #
 # Created:     2020/02/17
@@ -27,6 +28,8 @@ UDP_PORT = 5005
 TEST_MODE = True
 
 
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 class pwrGenClient(object):
     def __init__(self, parent):
         self.serialComm = ArduinoCOMM(self)
