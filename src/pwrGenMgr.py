@@ -26,19 +26,51 @@ import S7PLC1200 as s71200
 PERIOD = 1  # update frequency
 UDP_PORT = 5005
 TEST_MODE = True
-
+PLC1_IP = '192.168.10.72'
+PLC2_IP = '192.168.10.73'
+PLC3_IP = '192.168.10.73'
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class pwrGenClient(object):
+    """ Client program running on Raspberry PI or nomral computer to connect
+        to PLC and Arduino.
+    """
     def __init__(self, parent):
-        self.serialComm = ArduinoCOMM(self)
+
+
+
+        # try to connect to the arduino by serial port.      
+        self.serialComm = serialCom.serialCom(None, baudRate=115200)
+        print("Arduino connection : %s" %str(self.serialComm.connected))
+        # try to connect to the PLCs.
+        try:
+            self.pcl1 = m221.M221(PLC1_IP)
+        except:
+            self.pcl1 = None
+        finally:
+            result = 'connected' if self.pcl1 else 'not response'
+            print('PLC 1 [%s] : %s' %(PLC1_IP, result))
+
+        try:
+            self.pcl2 = s71200.S7PLC1200(PLC2_IP)
+        except:
+            self.pcl2 = None
+        finally:
+            result = 'connected' if self.pcl2 else 'not response'
+            print('PLC 2 [%s] : %s' %(PLC1_IP, result))
+
+        try:
+            self.pcl3 = m221.M221(PLC3_IP)
+        except:
+            self.pcl3 = None
+        finally:
+            result = 'connected' if self.pcl3 else 'not response'
+            print('PLC 3 [%s] : %s' %(PLC1_IP, result))
+        
+        # Set the load number.
         self.loadNum = 0 
-        # connect to the PLC
-        if not TEST_MODE:
-            self.se1 = m221.M221('192.168.10.72')
-            self.se2 = s71200.S7PLC1200('192.168.10.73')
-            self.se3 = m221.M221('192.168.10.71')
+     
 
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
@@ -74,39 +106,39 @@ class pwrGenClient(object):
     def setPumpSpeed(self, spdNum):
         if TEST_MODE: return
         if spdNum == 0:
-            self.se1.writeMem('M4', 0)
-            self.se1.writeMem('M5', 0)
+            self.pcl1.writeMem('M4', 0)
+            self.pcl1.writeMem('M5', 0)
         elif spdNum == 1:
-            self.se1.writeMem('M4', 0)
-            self.se1.writeMem('M5', 1)
+            self.pcl1.writeMem('M4', 0)
+            self.pcl1.writeMem('M5', 1)
         elif spdNum == 2:
-            self.se1.writeMem('M4', 1)
-            self.se1.writeMem('M5', 0)
+            self.pcl1.writeMem('M4', 1)
+            self.pcl1.writeMem('M5', 0)
 
     def setMotoSpeed(self, spdNum):
         if TEST_MODE: return
         if spdNum == 0:
-            self.se2.writeMem('qx0.3', False)
-            self.se2.writeMem('qx0.4', False)
+            self.pcl2.writeMem('qx0.3', False)
+            self.pcl2.writeMem('qx0.4', False)
         elif spdNum == 1:
-            self.se2.writeMem('qx0.3', False)
-            self.se2.writeMem('qx0.4', True)
+            self.pcl2.writeMem('qx0.3', False)
+            self.pcl2.writeMem('qx0.4', True)
         elif spdNum == 2:
-            self.se2.writeMem('qx0.3', True)
-            self.se2.writeMem('qx0.4', False)
+            self.pcl2.writeMem('qx0.3', True)
+            self.pcl2.writeMem('qx0.4', False)
 
 
     def getLoadNum(self):
         if TEST_MODE: return 0
         count = 0
         # Residential
-        if self.se2.getMem('qx0.2', True):
+        if self.pcl2.getMem('qx0.2', True):
             count += 1
         # Station light
-        if self.se2.getMem('qx0.0', True):
+        if self.pcl2.getMem('qx0.0', True):
             count += 1
 
-        S1resp = self.se1.redMem()
+        S1resp = self.pcl1.redMem()
         #Industrial
         if S1resp[19] != '0':
             count += 1

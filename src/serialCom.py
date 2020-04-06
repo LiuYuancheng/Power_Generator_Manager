@@ -34,6 +34,7 @@ class serialCom(Serial):
             will automatically find the port which can connected. For windows we 
             use the last port(idx=-1) in the list and in linux we use first port(idx=0)  
         """
+        self.connected = False
         # Automatically find the serial port which can read and write.
         if serialPort is None:
             conIdx = 0  # port index used for connection.
@@ -61,6 +62,7 @@ class serialCom(Serial):
         # Call the parent __init__() to connect to the port.
         try:
             super().__init__(serialPort, baudRate, BYTE_SIZE, PARITY, STOP_BIT, timeout=TIME_OUT)
+            self.connected = True
         except:
             print("serialCom: serial port open error.")
 
