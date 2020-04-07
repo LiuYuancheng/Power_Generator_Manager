@@ -14,17 +14,15 @@
 import os, sys
 import time
 import glob
+import json
+import re
 import serial
 import threading
-import json
-
-
 
 import udpCom
 import serialCom
 import M2PLC221 as m221
 import S7PLC1200 as s71200
-
 
 PERIOD = 1  # update frequency
 UDP_PORT = 5005
@@ -72,6 +70,9 @@ class pwrGenClient(object):
         self.loadNum = 0 
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
+        # Init the state manager.
+        self.stateMgr = stateManager()
+
 
 #--------------------------------------------------------------------------
     def mainLoop(self):
@@ -103,61 +104,57 @@ class pwrGenClient(object):
         msg = ';'.join([strList[0], strList[1], strList[6], strList[7], str(self.loadNum)])
         return msg
 
-    def setPumpSpeed(self, spdNum):
+#--------------------------------------------------------------------------
+    def setPumpSpeed(self, val):
         if TEST_MODE: return
-        if spdNum == 0:
-            self.pcl1.writeMem('M4', 0)
-            self.pcl1.writeMem('M5', 0)
-        elif spdNum == 1:
-            self.pcl1.writeMem('M4', 0)
-            self.pcl1.writeMem('M5', 1)
-        elif spdNum == 2:
-            self.pcl1.writeMem('M4', 1)
-            self.pcl1.writeMem('M5', 0)
+        # update the state manager
+        self.stateMgr.updateGenPlcState({'Pspd':val})
+        # change the plc state to do the action.
+        pSpeedDict = {'off': (0, 0), 'slow': (0, 1), 'fast': (1, 0)}
+        self.pcl1.writeMem('M4', pSpeedDict[val][0])
+        time.sleep(0.01) # need we sleep a shot while for plc to response?
+        self.pcl1.writeMem('M5', pSpeedDict[val][1])
 
-    def setMotoSpeed(self, spdNum):
+#--------------------------------------------------------------------------
+    def setMotoSpeed(self, val):
         if TEST_MODE: return
-        if spdNum == 0:
-            self.pcl2.writeMem('qx0.3', False)
-            self.pcl2.writeMem('qx0.4', False)
-        elif spdNum == 1:
-            self.pcl2.writeMem('qx0.3', False)
-            self.pcl2.writeMem('qx0.4', True)
-        elif spdNum == 2:
-            self.pcl2.writeMem('qx0.3', True)
-            self.pcl2.writeMem('qx0.4', False)
+        # update the state manager
+        self.stateMgr.updateGenPlcState({'Mspd':val})
+        # change the plc state to do the action.
+        mSpeedDict = {'off': (False, False), 'slow': (False, True), 'fast': (True, False)}
+        self.pcl2.writeMem('qx0.3', mSpeedDict[0])
+        time.sleep(0.01) # need we sleep a shot while for plc to response?
+        self.pcl2.writeMem('qx0.4', mSpeedDict[1])
 
+#--------------------------------------------------------------------------
+    def getLoadState(self):
+        """"Connect to PLC to get the current load state."""
+        loadDict = {'Indu': 0,      # Industry area
+                    'Airp': 0,      # Air port
+                    'Resi': 0,      # Residential area
+                    'Stat': 0,      # Stataion power
+                    'TrkA': 0,      # Track A power
+                    'TrkB': 0,      # Track B power
+                    'City': 0,      # City power
+                }
 
-    def getLoadNum(self):
-        if TEST_MODE: return 0
-        count = 0
-        # Residential
-        if self.pcl2.getMem('qx0.2', True):
-            count += 1
-        # Station light
-        if self.pcl2.getMem('qx0.0', True):
-            count += 1
+        # get the PLC 1 state:
+        s1resp = re.findall('..', str(self.pcl1.redMem())[-16:])
+        loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
+        loadDict['Airp'] = 1 if s1resp[2] == '04' else 0
 
-        S1resp = self.pcl1.redMem()
-        #Industrial
-        if S1resp[19] != '0':
-            count += 1
-        # Run way
-        if S1resp[21] != '0':
-            count += 1
+        # get PLC 2 state:
+        loadDict['Resi'] = 1 if self.pcl2.getMem('qx0.2', True) else 0
+        loadDict['Stat'] = 1 if self.pcl2.getMem('qx0.0', True) else 0
 
-        S3resp = self.se3.redMem()
-        # City
-        if S3resp[18] != '0':
-            count += 1
-        # Track A
-        if S3resp[19] != '0':
-            count += 1
-        # Track B
-        if S3resp[21] != '0':
-            count += 1
+        # get PLC 3 state
+        s3resp = re.findall('..', str(self.pcl3.redMem())[-16:])
+        loadDict['TrkA'] = 1 if s3resp[2] == '04' else 0
+        loadDict['TrkB'] = 1 if s3resp[3] == '10' else 0
+        loadDict['City'] = 1 if s3resp[8] == '00' else 0
+        self.stateMgr.updateLoadPlcState(loadDict)            
 
-        return count
+#--------------------------------------------------------------------------
 
 #--------------------------------------------------------------------------
 class ArduinoCOMM(object):
@@ -214,11 +211,11 @@ class ArduinoCOMM(object):
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
-
-class stateMgr(object):
+class stateManager(object):
     """ save the current system state.""" 
-    def __init__(self, parent, threadID, name):
-        self.parent = parent
+    def __init__(self):
+        # Serial cmd str sequence. 
+        self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
         self.genDict = {    'Freq': '0.00',     # frequence (dd.dd)
                             'Volt': '0.00',     # voltage (dd.dd)
                             'Fled': 'green',    # frequence led (green/amber/off)
@@ -243,52 +240,45 @@ class stateMgr(object):
                          }
 
 #--------------------------------------------------------------------------
+    def getGenInfo(self):
+        return json.dumps(self.genDict)
+
+#--------------------------------------------------------------------------
+    def getLoadInfo(self):
+        return json.dumps(self.loadDict)
+
+#--------------------------------------------------------------------------
     def getLoadNum(self):
         """return the number of loads"""
         return sum(self.loadDict.value())
 
 #--------------------------------------------------------------------------
-    def setLoad(self, idxList, ValList):
-        for item in zip(idxList, ValList):
-            idx, val = item
-            self.loadPins[idx] = val
-        # simulate the frequency imediatly change.
-        val = sum(self.loadPins)
-        
-        # Set pump speed
-        if  val == 0:
-            self.pumpSp = 0
-        elif val == 3:
-            self.pumpSp = 2
-        elif val < 3:
-            self.pumpSp = 1
-        else:
-            self.pumpSp = 3
+    def updateGenSerState(self, changeDict):
+        """ passed in the changeDict and the function will return a 
+        """
+        # first time inti setting.
+        if changeDict is None:
+            return ':'.join([self.genDict[keyStr] for keyStr in self.serialSqu])
+        valList = []
+        for keyStr in self.serialSqu:
+            if keyStr in changeDict.keys():
+                self.genDict[keyStr] = changeDict[changeDict]
+                valList.append(self.genDict[keyStr])
+            else:
+                valList.append('-') # append the ingore char if the value not change.
+        return ':'.join(valList)
 
-        # set moto speed
-        if val > self.loadCount:
-            self.motorSp -= 3
-        elif val < self.loadCount:
-            self.motorSp += 3
-        self.loadCount = val
+#--------------------------------------------------------------------------
+    def updateGenPlcState(self, changeDict):
+        for keyStr in changeDict:
+            self.genDict[keyStr] = changeDict[changeDict]
 
-    def getMotorSp(self):
-        return self.motorSp
-    
-    def getPumpSp(self):
-        return self.pumpSp
-
-    def run(self):
-        while not self.terminate:
-            time.sleep(PERIOD)
-            if self.motorSp < 50:
-                self.motorSp += 1
-            elif self.motorSp > 50:
-                self.motorSp -= 1
-            print(" M and P speed: %s" %str( (self.motorSp, self.pumpSp) ))
-
-    def stop(self):
-        self.terminate = True
+#--------------------------------------------------------------------------
+    def updateLoadPlcState(self, changeDict):
+        for keyStr in changeDict:
+            self.loadDict[keyStr] = changeDict[keyStr]
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 def testCase():
     client = pwrGenClient(None)
