@@ -16,6 +16,9 @@ import time
 import glob
 import serial
 import threading
+import json
+
+
 
 import udpCom
 import serialCom
@@ -37,9 +40,6 @@ class pwrGenClient(object):
         to PLC and Arduino.
     """
     def __init__(self, parent):
-
-
-
         # try to connect to the arduino by serial port.      
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         print("Arduino connection : %s" %str(self.serialComm.connected))
@@ -70,14 +70,14 @@ class pwrGenClient(object):
         
         # Set the load number.
         self.loadNum = 0 
-     
-
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
 
+#--------------------------------------------------------------------------
     def mainLoop(self):
         self.server.serverStart(handler=self.msgHandler)
 
+#--------------------------------------------------------------------------
     def msgHandler(self, msg):
         """ The test handler method passed into the UDP server to handle the 
             incoming messages.
@@ -215,19 +215,39 @@ class ArduinoCOMM(object):
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 
-
-class pwrGenMgr(threading.Thread):
-    """ TCP server thread.""" 
+class stateMgr(object):
+    """ save the current system state.""" 
     def __init__(self, parent, threadID, name):
-        threading.Thread.__init__(self)
         self.parent = parent
-        self.loadPins = [0]*5   # load connect to the generator.
-        self.loadCount = sum(self.loadPins)
-        self.motorSp = 50        # motor speed 0:low, 1:medium, 2:high
-        self.pumpSp = 1         # pump speed 0:low, 1 medium, 2:high
-        self.respT = 3          # time interval to response back to normal.
-        self.terminate = False
+        self.genDict = {    'Freq': '0.00',     # frequence (dd.dd)
+                            'Volt': '0.00',     # voltage (dd.dd)
+                            'Fled': 'green',    # frequence led (green/amber/off)
+                            'Vled': 'green',    # voltage led (green/amber/off)
+                            'Mled': 'green',    # motor led (green/amber/off)
+                            'Pled': 'green',    # pump led (green/amber/off)
+                            'Smok': 'off',      # smoke indicator (fast/slow/off)
+                            'Pspd': 'off',      # pump speed (fast/slow/off)
+                            'Mspd': 'off',      # moto speed (fast/slow/off)
+                            'Sirn': 'off',      # siren (on/off)
+                            'Spwr': 'off',      # sensor power (on/off)
+                            'Mpwr': 'on'        # main power (on/off)
+                        }
 
+        self.loadDict = {   'Indu': 0,      # Industry area
+                            'Airp': 0,      # Air port
+                            'Resi': 0,      # Residential area
+                            'Stat': 0,      # Stataion power
+                            'TrkA': 0,      # Track A power
+                            'TrkB': 0,      # Track B power
+                            'City': 0,      # City power
+                         }
+
+#--------------------------------------------------------------------------
+    def getLoadNum(self):
+        """return the number of loads"""
+        return sum(self.loadDict.value())
+
+#--------------------------------------------------------------------------
     def setLoad(self, idxList, ValList):
         for item in zip(idxList, ValList):
             idx, val = item
