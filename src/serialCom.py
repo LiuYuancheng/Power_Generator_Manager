@@ -57,8 +57,12 @@ class serialCom(Serial):
                     portList.append(port)
                 except (OSError, SerialException):
                     pass
-            print(('serialCom: the serial ports can be used : %s' % str(portList)))
-            serialPort = portList[conIdx]
+            if len(portList) == 0:
+                print('serialCom: no COM port can be used for connection.')
+                return
+            else:
+                print(('serialCom: the serial ports can be used : %s' % str(portList)))
+                serialPort = portList[conIdx]
         # Call the parent __init__() to connect to the port.
         try:
             super().__init__(serialPort, baudRate, BYTE_SIZE, PARITY, STOP_BIT, timeout=TIME_OUT)

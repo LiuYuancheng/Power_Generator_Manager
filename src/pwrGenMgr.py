@@ -43,27 +43,27 @@ class pwrGenClient(object):
         print("Arduino connection : %s" %str(self.serialComm.connected))
         # try to connect to the PLCs.
         try:
-            self.pcl1 = m221.M221(PLC1_IP)
+            self.plc1 = m221.M221(PLC1_IP)
         except:
-            self.pcl1 = None
+            self.plc1 = None
         finally:
-            result = 'connected' if self.pcl1 else 'not response'
+            result = 'connected' if self.plc1 else 'not response'
             print('PLC 1 [%s] : %s' %(PLC1_IP, result))
 
         try:
-            self.pcl2 = s71200.S7PLC1200(PLC2_IP)
+            self.plc2 = s71200.S7PLC1200(PLC2_IP)
         except:
-            self.pcl2 = None
+            self.plc2 = None
         finally:
-            result = 'connected' if self.pcl2 else 'not response'
+            result = 'connected' if self.plc2 else 'not response'
             print('PLC 2 [%s] : %s' %(PLC1_IP, result))
 
         try:
-            self.pcl3 = m221.M221(PLC3_IP)
+            self.plc3 = m221.M221(PLC3_IP)
         except:
-            self.pcl3 = None
+            self.plc3 = None
         finally:
-            result = 'connected' if self.pcl3 else 'not response'
+            result = 'connected' if self.plc3 else 'not response'
             print('PLC 3 [%s] : %s' %(PLC1_IP, result))
         
         # Set the load number.
@@ -73,7 +73,6 @@ class pwrGenClient(object):
         # Init the state manager.
         self.stateMgr = stateManager()
 
-
 #--------------------------------------------------------------------------
     def mainLoop(self):
         self.server.serverStart(handler=self.msgHandler)
@@ -82,49 +81,69 @@ class pwrGenClient(object):
     def msgHandler(self, msg):
         """ The test handler method passed into the UDP server to handle the 
             incoming messages.
+            incomming message sample:
+            msg = {
+                'Cmd': str(***),
+                'Parm': 
+            }
         """
         print("Incomming message: %s" %str(msg))
-        msg = msg.decode('utf-8')
-        if msg == 'Get':
-            pass
-        else:
-            pumpSp = int(msg.split(';')[-1])
-            print("set speed %s" %str(pumpSp))
-            #self.setPumpSpeed(pumpSp)
+        respStr = json.dumps({'Cmd':'Set', 'Param': 'Done'})
+        msgDict = json.loads(msg.decode('utf-8'))
+        if msgDict['Cmd'] == 'Get':
+            if msgDict['Parm'] == 'Gen':
+                respStr = self.stateMgr.getGenInfo()
+            else:
+                self.getLoadState()
+                respStr = self.stateMgr.getLoadInfo()
+        elif msgDict['Cmd'] == 'SetGen':
+            self.stateMgr.updateGenSerState(msgDict['Parm'])
 
-        self.loadNum = self.getLoadNum()
-        if 0 < self.loadNum <= 5 :
-            self.setMotoSpeed(2)
-        elif self.loadNum == 0 :
-            self.setMotoSpeed(0)
-        else:
-            self.setMotoSpeed(1)
-        strList = self.serialComm.autoSet(self.loadNum)
-        
-        msg = ';'.join([strList[0], strList[1], strList[6], strList[7], str(self.loadNum)])
-        return msg
+        elif msgDict['Cmd'] == 'SetPLC':
+            # update the related plc
+            if 'Mpwr' in msgDict['Parm'].keys():
+                self.setMainPwr(msgDict['Parm']['Mpwr'])
+            
+            if 'Spwr' in msgDict['Parm'].keys():
+                self.setSensorPwr(msgDict['Parm']['Spwr'])
+
+            if 'Pspd' in msgDict['Parm'].keys():
+                self.setPumpSpeed(msgDict['Parm']['Pspd']) 
+
+            if 'Mspd' in msgDict['Parm'].keys():
+                self.setMotoSpeed(msgDict['Parm']['Pspd'])
+            # updaste the state manager
+            self.stateMgr.updateGenPlcState(msgDict['Parm'])
+        return respStr
 
 #--------------------------------------------------------------------------
     def setPumpSpeed(self, val):
         if TEST_MODE: return
-        # update the state manager
-        self.stateMgr.updateGenPlcState({'Pspd':val})
         # change the plc state to do the action.
         pSpeedDict = {'off': (0, 0), 'slow': (0, 1), 'fast': (1, 0)}
-        self.pcl1.writeMem('M4', pSpeedDict[val][0])
+        self.plc1.writeMem('M4', pSpeedDict[val][0])
         time.sleep(0.01) # need we sleep a shot while for plc to response?
-        self.pcl1.writeMem('M5', pSpeedDict[val][1])
+        self.plc1.writeMem('M5', pSpeedDict[val][1])
 
 #--------------------------------------------------------------------------
     def setMotoSpeed(self, val):
         if TEST_MODE: return
-        # update the state manager
-        self.stateMgr.updateGenPlcState({'Mspd':val})
         # change the plc state to do the action.
         mSpeedDict = {'off': (False, False), 'slow': (False, True), 'fast': (True, False)}
-        self.pcl2.writeMem('qx0.3', mSpeedDict[0])
+        self.plc2.writeMem('qx0.3', mSpeedDict[0])
         time.sleep(0.01) # need we sleep a shot while for plc to response?
-        self.pcl2.writeMem('qx0.4', mSpeedDict[1])
+        self.plc2.writeMem('qx0.4', mSpeedDict[1])
+
+#--------------------------------------------------------------------------
+    def setSensorPwr(self, val):
+        parm = 1 if val=='on' else 0
+        self.plc3.writeMem('M4', parm)
+        self.plc3.writeMem('M5', parm)
+
+#--------------------------------------------------------------------------
+    def setMainPwr(self, val):
+        parm = 1 if val=='on' else 0
+        self.plc3.writeMem('M6', parm)
 
 #--------------------------------------------------------------------------
     def getLoadState(self):
@@ -139,75 +158,20 @@ class pwrGenClient(object):
                 }
 
         # get the PLC 1 state:
-        s1resp = re.findall('..', str(self.pcl1.redMem())[-16:])
+        s1resp = re.findall('..', str(self.plc1.redMem())[-16:])
         loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
         loadDict['Airp'] = 1 if s1resp[2] == '04' else 0
 
         # get PLC 2 state:
-        loadDict['Resi'] = 1 if self.pcl2.getMem('qx0.2', True) else 0
-        loadDict['Stat'] = 1 if self.pcl2.getMem('qx0.0', True) else 0
+        loadDict['Resi'] = 1 if self.plc2.getMem('qx0.2', True) else 0
+        loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0', True) else 0
 
         # get PLC 3 state
-        s3resp = re.findall('..', str(self.pcl3.redMem())[-16:])
+        s3resp = re.findall('..', str(self.plc3.redMem())[-16:])
         loadDict['TrkA'] = 1 if s3resp[2] == '04' else 0
         loadDict['TrkB'] = 1 if s3resp[3] == '10' else 0
         loadDict['City'] = 1 if s3resp[8] == '00' else 0
         self.stateMgr.updateLoadPlcState(loadDict)            
-
-#--------------------------------------------------------------------------
-
-#--------------------------------------------------------------------------
-class ArduinoCOMM(object):
-    def __init__(self, parent):
-        """ Init the arduino communication."""
-        # sequence "Frequency:Voltage:Frequency LED:Voltage LED:Motor LED:Pump LED:Smoke:Siren "
-        self.msgDict = {
-            '0' : ['52.00', '11.00', 'red', 'green', 'green', 'green', 'off', 'on'], 
-            '1' : ['51.20', '11.00', 'amber', 'green', 'green', 'green', 'fast', 'on'], 
-            '2' : ['50.80', '11.00', 'amber', 'green', 'green', 'green', 'fast', 'off'], 
-            '3' : ['50.40', '11.00', 'green', 'green', 'green', 'green', 'fast', 'off'], 
-            '4' : ['50.00', '11.00', 'green', 'green', 'green', 'green', 'fast', 'off'], 
-            '5' : ['49.80', '11.00', 'green', 'green', 'green', 'green', 'fast', 'off'], 
-            '6' : ['49.40', '11.00', 'amber', 'green', 'amber', 'amber', 'slow', 'on'], 
-            '7' : ['48.20', '11.00', 'red', 'green', 'amber', 'amber', 'slow', 'on'], 
-        }
-        
-        self.serComm = None
-        if TEST_MODE: return
-        portList = []
-        if sys.platform.startswith('win'):
-            ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-            # this excludes your current terminal "/dev/tty"
-            ports = glob.glob('/dev/tty[A-Za-z]*')
-        elif sys.platform.startswith('darwin'):
-            ports = glob.glob('/dev/tty.*')
-        else:
-            raise EnvironmentError('Serial Port comm connection error: Unsupported platform.')
-        for port in ports:
-            # Check whether the port can be open.
-            try:
-                s = serial.Serial(port)
-                s.close()
-                portList.append(port)
-            except (OSError, serial.SerialException):
-                pass
-        print(('COM connection: the serial port can be used :%s' % str(portList)))
-        self.serialPort = portList[0]
-        try:
-            self.serComm = serial.Serial(self.serialPort, 115200, 8, 'N', 1, timeout=1)
-        except:
-            print("Serial connection: serial port open error.")
-            return None
-
-    def autoSet(self, loadNum):
-        if 0 <= loadNum < 8 :
-            strList = self.msgDict[str(loadNum)]
-            msgStr = ':'.join(strList)
-            if self.serComm and not TEST_MODE:
-                print('Send message [%s] to cmd ' %msgStr)
-                self.serComm.write(msgStr.encode('utf-8'))
-            return strList
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
