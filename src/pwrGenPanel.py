@@ -172,6 +172,45 @@ class PanelPump(wx.Panel):
         self.Update()
 
 #-----------------------------------------------------------------------------
+class PanelLoad(wx.Panel):
+    """ Panel to show the load situation."""
+
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.SetBackgroundColour(wx.Colour(200, 210, 200))
+        self.loadBtDict = {   'Indu': None,      # Industry area
+                            'Airp': None,      # Air port
+                            'Resi': None,      # Residential area
+                            'Stat': None,      # Stataion power
+                            'TrkA': None,      # Track A power
+                            'TrkB': None,      # Track B power
+                            'City': None,      # City power
+                         }
+
+        self.SetSizer(self._buidUISizer())
+
+    #--PanelCtrl-------------------------------------------------------------------
+    def _buidUISizer(self):
+        """ build the control panel sizer. """
+        sizer = wx.GridSizer(8, 2, 4, 4)
+        sizer.Add(wx.StaticText(self, -1, 'System Load Indicators:'))
+        sizer.AddSpacer(5)
+        lbStrList = ('Inductrial Area [PLC1] : ', 
+                    'Airport Area [PLC1] : ',
+                    'Residential Area [PLC2]',
+                    'Train Station [PLC2]',
+                    'Railway Track A [PLC3]',
+                    'Railway Track B [PLC3]',
+                    'City Area Power [PLC3]')
+        btKeyList = ('Indu', 'Airp', 'Resi', 'Stat', 'TrkA', 'TrkB', 'City')
+        for i in range(7):
+            sizer.Add(wx.StaticText(self, -1, lbStrList[i]))
+            self.loadBtDict[btKeyList[i]] = wx.Button(self, label='OFF', size=(60, 30))
+            self.loadBtDict[btKeyList[i]].SetBackgroundColour(wx.Colour('GRAY'))
+            sizer.Add(self.loadBtDict[btKeyList[i]])
+        return sizer 
+
+#-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelCtrl(wx.Panel):
     """ Function control panel."""

@@ -27,25 +27,25 @@ class UIFrame(wx.Frame):
     """ URL/IP gps position finder main UI frame."""
     def __init__(self, parent, id, title):
         """ Init the UI and parameters """
-        wx.Frame.__init__(self, parent, id, title, size=(600, 240))
+        wx.Frame.__init__(self, parent, id, title, size=(600, 450))
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         self.loadCbList = []
         self.ledList = []
         self.SetSizer(self._buidUISizer())
 
-        gv.iGnMgr = gm.pwrGenMgr(self, 0, "Gen mgr")
-        gv.iGnMgr.start()
-        gv.iGnMgr.setLoad([],[])
+        #gv.iGnMgr = gm.pwrGenMgr(self, 0, "Gen mgr")
+        #gv.iGnMgr.start()
+        #gv.iGnMgr.setLoad([],[])
 
 
-        self.client = udpCom.udpClient(('127.0.0.1', UDP_PORT))
+        #self.client = udpCom.udpClient(('127.0.0.1', UDP_PORT))
 
 
-        self.parmList = [50, 22, 50, 50, gv.iGnMgr.getMotorSp(), gv.iGnMgr.getPumpSp(), 0, 1]
-        self.setLEDVal(0, self.parmList[0]*100)
-        self.setLEDVal(1, self.parmList[1]*10)
-        self.setLEDVal(2, gv.iGnMgr.getMotorSp())
+        #self.parmList = [50, 22, 50, 50, gv.iGnMgr.getMotorSp(), gv.iGnMgr.getPumpSp(), 0, 1]
+        #self.setLEDVal(0, self.parmList[0]*100)
+        #self.setLEDVal(1, self.parmList[1]*10)
+        #self.setLEDVal(2, gv.iGnMgr.getMotorSp())
         #self.setLEDVal(3, gv.iGnMgr.getPumpSp())
 
         # Set the periodic call back
@@ -56,7 +56,7 @@ class UIFrame(wx.Frame):
         self.timer.Start(PERIODIC)  # every 500 ms
         
         self.statusbar = self.CreateStatusBar()
-        self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
+        #self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
         print("Program init finished.")
@@ -124,6 +124,12 @@ class UIFrame(wx.Frame):
         gv.iCtrlPanel = pl.PanelCtrl(self)
         mSizer.Add(gv.iCtrlPanel, flag=flagsR, border=2)
         sizerAll.Add(mSizer, flag=flagsR, border=2)
+
+        self.loadPanel = pl.PanelLoad(self)
+
+        sizerAll.Add(self.loadPanel, flag=flagsR, border=2)
+
+
 
         return sizerAll
 
