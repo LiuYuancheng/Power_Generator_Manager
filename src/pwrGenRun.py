@@ -27,26 +27,13 @@ class UIFrame(wx.Frame):
     """ URL/IP gps position finder main UI frame."""
     def __init__(self, parent, id, title):
         """ Init the UI and parameters """
-        wx.Frame.__init__(self, parent, id, title, size=(600, 450))
+        wx.Frame.__init__(self, parent, id, title, size=(800, 300))
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         self.loadCbList = []
         self.ledList = []
         self.SetSizer(self._buidUISizer())
 
-        #gv.iGnMgr = gm.pwrGenMgr(self, 0, "Gen mgr")
-        #gv.iGnMgr.start()
-        #gv.iGnMgr.setLoad([],[])
-
-
-        #self.client = udpCom.udpClient(('127.0.0.1', UDP_PORT))
-
-
-        #self.parmList = [50, 22, 50, 50, gv.iGnMgr.getMotorSp(), gv.iGnMgr.getPumpSp(), 0, 1]
-        #self.setLEDVal(0, self.parmList[0]*100)
-        #self.setLEDVal(1, self.parmList[1]*10)
-        #self.setLEDVal(2, gv.iGnMgr.getMotorSp())
-        #self.setLEDVal(3, gv.iGnMgr.getPumpSp())
 
         # Set the periodic call back
         self.lastPeriodicTime = time.time()
@@ -66,68 +53,102 @@ class UIFrame(wx.Frame):
     def _buidUISizer(self):
         """ Build the main UI Sizer. """
         flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
-        sizerAll= wx.BoxSizer(wx.VERTICAL)
+        sizerAll= wx.BoxSizer(wx.HORIZONTAL)
+        # System load display panel.
         sizerAll.AddSpacer(5)
+        self.loadPanel = pl.PanelLoad(self)
+        sizerAll.Add(self.loadPanel, flag=flagsR, border=2)
+        sizerAll.AddSpacer(5)
+        sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 200),
+                            style=wx.LI_VERTICAL), flag=flagsR, border=2)
+        sizerAll.AddSpacer(5)
+        
+        genSizer = wx.BoxSizer(wx.VERTICAL)
+
+        genSizer.Add(wx.StaticText(self, -1, 'Generator Information:'), flag=flagsR, border=2)
+        genSizer.AddSpacer(10)
         # LED area
         uSizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbList = ('Frequency : ', 'Voltage : ', 'LoadNum : ')
-        for i in range(3):
-            uSizer.Add(wx.StaticText(self, label=lbList[i]), flag=flagsR, border=2)
-            led = gizmos.LEDNumberCtrl(self, -1, size = (60, 25), style=gizmos.LED_ALIGN_CENTER)
-            self.ledList.append(led)
-            uSizer.AddSpacer(5)
-            uSizer.Add(led, flag=flagsR, border=2)
-            uSizer.AddSpacer(10)
-
-        uSizer.Add(wx.StaticText(self, label="pump Speed"), flag=flagsR, border=2)
-        self.MotoSP= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
-        self.MotoSP.SetSelection(0)
-        self.MotoSP.Bind(wx.EVT_COMBOBOX, self.onPumpSpdChange)
-        uSizer.Add(self.MotoSP, flag=flagsR, border=2)
+        # Frequence LED
+        self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 30))
+        self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.feqLedBt, flag=flagsR, border=2)
+        self.feqLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 30), style=gizmos.LED_ALIGN_CENTER)
+        uSizer.Add(self.feqLedDis, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Voltage LED
+        self.volLedBt = wx.Button(self, label='Voltage', size=(80, 30))
+        self.volLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.volLedBt, flag=flagsR, border=2)
+        self.volLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 30), style=gizmos.LED_ALIGN_CENTER)
+        uSizer.Add(self.volLedDis, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Smoke LED
+        self.smkIdc = wx.Button(self, label='Smoke [OFF]', size=(100, 30), name='smoke')
+        self.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.smkIdc, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Siren LED
+        self.sirenIdc = wx.Button(self, label='Siren [OFF] ', size=(100, 30), name='smoke')
+        self.sirenIdc.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.sirenIdc, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
         
-        sizerAll.Add(uSizer, flag=flagsR, border=2)
-        sizerAll.AddSpacer(5)
 
-        sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(600, -1),
+        genSizer.Add(uSizer, flag=flagsR, border=2)
+
+        genSizer.AddSpacer(5)
+        genSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(600, -1),
                     style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
-        mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        # Col 0 : output load sizer:
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        vbox.Add(wx.StaticText(self, label="Load setting: "), flag=flagsR, border=2)
-        vbox.AddSpacer(5)
-        loadLb = ('Airport', 'Train track A', 'Train track B', 'City Pwr', 'Industrial Pwr')
-        for i in range(5):
-            cb = wx.CheckBox(self, label = 'Load[%s]: %s' %(str(i),loadLb[i])) 
-            cb.Bind(wx.EVT_CHECKBOX, self.onCheck)
-            vbox.Add(cb, flag=flagsR, border=2)
-            vbox.AddSpacer(5)
-        mSizer.Add(vbox, flag=flagsR, border=2)
-        mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
-                            style=wx.LI_VERTICAL), flag=flagsR, border=2)
+        genSizer.AddSpacer(5)
 
-        # Col 1: moto
+
+        mSizer = wx.BoxSizer(wx.HORIZONTAL)
+        
+        
+        self.MotoLedBt = wx.Button(self, label='Moto', size=(80, 30))
+        self.MotoLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        mSizer.Add(self.MotoLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        
         mSizer.AddSpacer(5)
         gv.iMotoImgPnl = pl.PanelMoto(self)
         mSizer.Add(gv.iMotoImgPnl, flag=flagsR, border=2)
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
                                  style=wx.LI_VERTICAL), flag=flagsR, border=2)
+
+        # Col 1: moto
         mSizer.AddSpacer(5)
 
+        vbox = wx.BoxSizer(wx.VERTICAL)
+        
+        self.pumpLedBt = wx.Button(self, label='Pump', size=(80, 30))
+        self.pumpLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        vbox.Add(self.pumpLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        vbox.AddSpacer(10)
+
+        vbox.Add(wx.StaticText(self, label="PumpSpeed"), flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        vbox.AddSpacer(10)
+        self.pumpSPCB= wx.ComboBox(self, -1, choices=['off', 'low', 'high'], size=(80, 30))
+        self.pumpSPCB.SetSelection(0)
+        self.pumpSPCB.Bind(wx.EVT_COMBOBOX, self.onPumpSpdChange)
+        vbox.Add(self.pumpSPCB, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        mSizer.Add(vbox, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        mSizer.AddSpacer(10)
         gv.iPumpImgPnl = pl.PanelPump(self)
         mSizer.Add(gv.iPumpImgPnl, flag=flagsR, border=2)
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
                             style=wx.LI_VERTICAL), flag=flagsR, border=2)
 
-        mSizer.AddSpacer(5)
-        gv.iCtrlPanel = pl.PanelCtrl(self)
-        mSizer.Add(gv.iCtrlPanel, flag=flagsR, border=2)
-        sizerAll.Add(mSizer, flag=flagsR, border=2)
+        self.sysPnl = pl.PanelCtrl(self)
+        mSizer.Add(self.sysPnl, flag=flagsR, border=2)
 
-        self.loadPanel = pl.PanelLoad(self)
 
-        sizerAll.Add(self.loadPanel, flag=flagsR, border=2)
+
+        genSizer.Add(mSizer, flag=flagsR, border=2)
+
+        sizerAll.Add(genSizer, flag=flagsR, border=2)
 
 
 
@@ -173,7 +194,7 @@ class UIFrame(wx.Frame):
             self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
 
     def onPumpSpdChange(self, event):
-        result = self.client.sendMsg('Set;'+str(self.MotoSP.GetSelection()), resp=True)
+        result = self.client.sendMsg('Set;'+str(self.pumpLedBt.GetSelection()), resp=True)
 
     def setLEDVal(self, idx, val):
         self.ledList[idx].SetValue(str(val))

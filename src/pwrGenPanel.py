@@ -189,26 +189,41 @@ class PanelLoad(wx.Panel):
 
         self.SetSizer(self._buidUISizer())
 
-    #--PanelCtrl-------------------------------------------------------------------
+#-----------------------------------------------------------------------------
     def _buidUISizer(self):
         """ build the control panel sizer. """
-        sizer = wx.GridSizer(8, 2, 4, 4)
-        sizer.Add(wx.StaticText(self, -1, 'System Load Indicators:'))
-        sizer.AddSpacer(5)
+        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        sizerAll = wx.BoxSizer(wx.VERTICAL)
+        sizerAll.Add(wx.StaticText(self, -1, 'System Load Indicators:'), flag=flagsR, border=2)
+        sizerAll.AddSpacer(10)
+        #sizer = wx.GridSizer(8, 2, 4, 4)
+        sizer = wx.FlexGridSizer(7, 2, 4, 4)
         lbStrList = ('Inductrial Area [PLC1] : ', 
                     'Airport Area [PLC1] : ',
-                    'Residential Area [PLC2]',
-                    'Train Station [PLC2]',
-                    'Railway Track A [PLC3]',
-                    'Railway Track B [PLC3]',
-                    'City Area Power [PLC3]')
+                    'Residential Area [PLC2] : ',
+                    'Train Station [PLC2] : ',
+                    'Railway Track A [PLC3] : ',
+                    'Railway Track B [PLC3] : ',
+                    'City Area Power [PLC3] : ')
         btKeyList = ('Indu', 'Airp', 'Resi', 'Stat', 'TrkA', 'TrkB', 'City')
         for i in range(7):
             sizer.Add(wx.StaticText(self, -1, lbStrList[i]))
-            self.loadBtDict[btKeyList[i]] = wx.Button(self, label='OFF', size=(60, 30))
+            self.loadBtDict[btKeyList[i]] = wx.Button(self, label='OFF', size=(60, 21))
             self.loadBtDict[btKeyList[i]].SetBackgroundColour(wx.Colour('GRAY'))
             sizer.Add(self.loadBtDict[btKeyList[i]])
-        return sizer 
+        sizerAll.Add(sizer, flag=flagsR, border=2)
+        return sizerAll 
+
+#-----------------------------------------------------------------------------
+    def setLoadIndicator(self, loadDict):
+        """ Set the load indicators.
+        """
+        for keyStr in loadDict.keys():
+            if keyStr in self.loadBtDict.keys():
+                (btLb, btColor) = ('ON ', 'GREEN') if loadDict[keyStr] else ('OFF', 'GRAY')
+                self.loadBtDict[keyStr].SetLabel(btLb)
+                self.loadBtDict[keyStr].SetBackgroundColour(wx.Colour(btColor))
+        self.Refresh(False)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -228,16 +243,16 @@ class PanelCtrl(wx.Panel):
         ctSizer = wx.BoxSizer(wx.VERTICAL)
         ctSizer.AddSpacer(10)
         # Row idx 0: show the search key and map zoom in level.
-        ctSizer.Add(wx.StaticText(self, label=" Indicator panel".ljust(15)),
+        ctSizer.Add(wx.StaticText(self, label=" System Power".ljust(15)),
                   flag=flagsR, border=2)
 
         ctSizer.AddSpacer(20)
-        self.smkIdc = wx.Button(self, label='Smoke  ', size=(120, 30), name='smoke')
+        self.smkIdc = wx.Button(self, label='All Sensor Pwr  ', size=(120, 30), name='smoke')
         self.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
         ctSizer.Add(self.smkIdc, flag=flagsR, border=2)
         ctSizer.AddSpacer(20)
 
-        self.sirenIdc = wx.Button(self, label='Siren ', size=(120, 30), name='smoke')
+        self.sirenIdc = wx.Button(self, label='System Main Pwr ', size=(120, 30), name='smoke')
         self.sirenIdc.SetBackgroundColour(wx.Colour('RED'))
         ctSizer.Add(self.sirenIdc, flag=flagsR, border=2)
         ctSizer.AddSpacer(10)
