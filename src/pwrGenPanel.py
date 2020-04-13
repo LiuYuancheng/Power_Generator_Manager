@@ -246,19 +246,18 @@ class PanelCtrl(wx.Panel):
         ctSizer.Add(wx.StaticText(self, label=" System Power".ljust(15)),
                   flag=flagsR, border=2)
 
-        ctSizer.AddSpacer(20)
-        self.smkIdc = wx.Button(self, label='All Sensor Pwr  ', size=(120, 30), name='smoke')
+        ctSizer.AddSpacer(10)
+        self.smkIdc = wx.Button(self, label='All Sensor Pwr  ', size=(120, 30))
         self.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
         ctSizer.Add(self.smkIdc, flag=flagsR, border=2)
-        ctSizer.AddSpacer(20)
+        ctSizer.AddSpacer(10)
 
-        self.sirenIdc = wx.Button(self, label='System Main Pwr ', size=(120, 30), name='smoke')
+        self.sirenIdc = wx.Button(self, label='System Main Pwr ', size=(120, 30))
         self.sirenIdc.SetBackgroundColour(wx.Colour('RED'))
         ctSizer.Add(self.sirenIdc, flag=flagsR, border=2)
         ctSizer.AddSpacer(10)
+        
+        self.debugBt = wx.Button(self, label='Debug Panel >> ', size=(120, 30))
+        ctSizer.Add(self.debugBt, flag=flagsR, border=2)
+        
         return ctSizer
-
-
-
-
-

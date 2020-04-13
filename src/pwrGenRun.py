@@ -2,7 +2,8 @@
 #-----------------------------------------------------------------------------
 # Name:        uiRun.py
 #
-# Purpose:     This module is used to create the main wx frame.
+# Purpose:     This module is used to create the control panel to connect to the 
+#              Raspberry PI generator control by UDP
 #
 # Author:      Yuancheng Liu
 #
@@ -18,57 +19,39 @@ import udpCom
 import pwrGenGobal as gv
 import pwrGenPanel as pl
 import pwrGenMgr as gm
+
 PERIODIC = 100      # update in every 500ms
 UDP_PORT = 5005
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-class UIFrame(wx.Frame):
+class AppFrame(wx.Frame):
     """ URL/IP gps position finder main UI frame."""
     def __init__(self, parent, id, title):
         """ Init the UI and parameters """
-        wx.Frame.__init__(self, parent, id, title, size=(800, 300))
+        wx.Frame.__init__(self, parent, id, title, size=(800, 340))
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
-        self.loadCbList = []
-        self.ledList = []
+        # build the UI.
         self.SetSizer(self._buidUISizer())
-
-
         # Set the periodic call back
         self.lastPeriodicTime = time.time()
         self.timer = wx.Timer(self)
         self.updateLock = False
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
-        
         self.statusbar = self.CreateStatusBar()
+        
         #self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
         self.Bind(wx.EVT_CLOSE, self.onClose)
-
         print("Program init finished.")
 
-
-#--UIFrame---------------------------------------------------------------------
-    def _buidUISizer(self):
-        """ Build the main UI Sizer. """
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
-        sizerAll= wx.BoxSizer(wx.HORIZONTAL)
-        # System load display panel.
-        sizerAll.AddSpacer(5)
-        self.loadPanel = pl.PanelLoad(self)
-        sizerAll.Add(self.loadPanel, flag=flagsR, border=2)
-        sizerAll.AddSpacer(5)
-        sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 200),
-                            style=wx.LI_VERTICAL), flag=flagsR, border=2)
-        sizerAll.AddSpacer(5)
-        
-        genSizer = wx.BoxSizer(wx.VERTICAL)
-
-        genSizer.Add(wx.StaticText(self, -1, 'Generator Information:'), flag=flagsR, border=2)
-        genSizer.AddSpacer(10)
+#-----------------------------------------------------------------------------
+    def _buildGenInfoSizer(self):
+        """ Build the generator information display panel."""
         # LED area
         uSizer = wx.BoxSizer(wx.HORIZONTAL)
+        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
         # Frequence LED
         self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 30))
         self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))
@@ -93,40 +76,88 @@ class UIFrame(wx.Frame):
         self.sirenIdc.SetBackgroundColour(wx.Colour('GRAY'))
         uSizer.Add(self.sirenIdc, flag=flagsR, border=2)
         uSizer.AddSpacer(10)
-        
+        return uSizer
 
-        genSizer.Add(uSizer, flag=flagsR, border=2)
+#-----------------------------------------------------------------------------
+    def _buildConnSizer(self):
+        """ build the components connection information display panel
+        """
 
+        sizer = wx.GridSizer(1, 6, 5, 5)
+        sizer.Add(wx.StaticText(self, -1, 'Connection State : '), flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL)
+        # raspberry PI connection.
+        self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
+        self.rspLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.rspLedBt)
+        # serial port connection led state.
+        self.serialLedBt = wx.Button(self, label='COMM', size=(75, 30))
+        self.serialLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.serialLedBt)
+        # PLC 1
+        self.plc1LedBt = wx.Button(self, label='PLC1', size=(75, 30))
+        self.plc1LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.plc1LedBt)
+        # PLC 2
+        self.plc2LedBt = wx.Button(self, label='PLC1', size=(75, 30))
+        self.plc2LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.plc2LedBt)
+        # PLC 3
+        self.plc3LedBt = wx.Button(self, label='PLC1', size=(75, 30))
+        self.plc3LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.plc3LedBt)
+
+        return sizer
+
+#--AppFrame---------------------------------------------------------------------
+    def _buidUISizer(self):
+        """ Build the main UI Sizer. """
+        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        sizerAll = wx.BoxSizer(wx.VERTICAL)
+        sizerAll.AddSpacer(5)
+        sizerAll.Add(self._buildConnSizer(), flag=flagsR, border=2)
+        sizerAll.AddSpacer(5)
+        sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(800, -1),
+                    style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
+        sizerAll.AddSpacer(5)
+
+        sizerInfo = wx.BoxSizer(wx.HORIZONTAL)
+        # System load display panel.
+        sizerInfo.AddSpacer(5)
+        self.loadPanel = pl.PanelLoad(self)
+        sizerInfo.Add(self.loadPanel, flag=flagsR, border=2)
+        sizerInfo.AddSpacer(5)
+        sizerInfo.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 200),
+                            style=wx.LI_VERTICAL), flag=flagsR, border=2)
+        sizerInfo.AddSpacer(5)
+        # Generator information display panel.
+        genSizer = wx.BoxSizer(wx.VERTICAL)
+        genSizer.Add(wx.StaticText(self, -1, 'Generator Information:'), flag=flagsR, border=2)
+        genSizer.AddSpacer(10)
+        # - add infomation display panel.
+        genSizer.Add(self._buildGenInfoSizer(), flag=flagsR, border=2)
         genSizer.AddSpacer(5)
         genSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(600, -1),
                     style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
         genSizer.AddSpacer(5)
-
-
+        # - add the moto display panel.
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        
-        
         self.MotoLedBt = wx.Button(self, label='Moto', size=(80, 30))
         self.MotoLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         mSizer.Add(self.MotoLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
-        
         mSizer.AddSpacer(5)
         gv.iMotoImgPnl = pl.PanelMoto(self)
         mSizer.Add(gv.iMotoImgPnl, flag=flagsR, border=2)
+        # - add the split line
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
-                                 style=wx.LI_VERTICAL), flag=flagsR, border=2)
-
-        # Col 1: moto
+                                 style=wx.LI_VERTICAL), flag=flagsR, border=2) 
         mSizer.AddSpacer(5)
-
+        # - add the pump display panel.
         vbox = wx.BoxSizer(wx.VERTICAL)
-        
         self.pumpLedBt = wx.Button(self, label='Pump', size=(80, 30))
         self.pumpLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         vbox.Add(self.pumpLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
         vbox.AddSpacer(10)
-
         vbox.Add(wx.StaticText(self, label="PumpSpeed"), flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
         vbox.AddSpacer(10)
         self.pumpSPCB= wx.ComboBox(self, -1, choices=['off', 'low', 'high'], size=(80, 30))
@@ -137,24 +168,29 @@ class UIFrame(wx.Frame):
         mSizer.AddSpacer(10)
         gv.iPumpImgPnl = pl.PanelPump(self)
         mSizer.Add(gv.iPumpImgPnl, flag=flagsR, border=2)
+        # - add the split line
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
                             style=wx.LI_VERTICAL), flag=flagsR, border=2)
-
+        mSizer.AddSpacer(5)
+        # Added the system debug and control panel.
         self.sysPnl = pl.PanelCtrl(self)
         mSizer.Add(self.sysPnl, flag=flagsR, border=2)
-
-
-
         genSizer.Add(mSizer, flag=flagsR, border=2)
 
-        sizerAll.Add(genSizer, flag=flagsR, border=2)
-
+        sizerInfo.Add(genSizer, flag=flagsR, border=2)
+        
+        sizerAll.Add(sizerInfo, flag=flagsR, border=2)
+        
+        sizerAll.AddSpacer(5)
+        sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(800, -1),
+                    style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
+        sizerAll.AddSpacer(5)
 
 
         return sizerAll
 
-
+#-----------------------------------------------------------------------------
     def onCheck(self, evnt):
         cb = evnt.GetEventObject()
         idx = int(cb.GetLabel().split('[')[-1][0])
@@ -162,7 +198,7 @@ class UIFrame(wx.Frame):
         gv.iGnMgr.setLoad([idx],[val])
 
 
-#--UIFrame---------------------------------------------------------------------
+#--AppFrame---------------------------------------------------------------------
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
@@ -206,11 +242,30 @@ class UIFrame(wx.Frame):
         self.timer.Stop()
         self.Destroy()
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class MyApp(wx.App):
     def OnInit(self):
-        gv.iMainFrame = UIFrame(None, -1, gv.APP_NAME)
+        gv.iMainFrame = AppFrame(None, -1, gv.APP_NAME)
         gv.iMainFrame.Show(True)
         return True
 
