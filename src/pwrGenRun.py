@@ -22,6 +22,7 @@ import pwrGenMgr as gm
 
 PERIODIC = 100      # update in every 500ms
 UDP_PORT = 5005
+RSP_IP = '127.0.0.1'
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -34,6 +35,14 @@ class AppFrame(wx.Frame):
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         # build the UI.
         self.SetSizer(self._buidUISizer())
+
+        self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
+
+
+
+
+
+
         # Set the periodic call back
         self.lastPeriodicTime = time.time()
         self.timer = wx.Timer(self)
@@ -202,6 +211,7 @@ class AppFrame(wx.Frame):
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
+        return
         if (not self.updateLock) and now - self.lastPeriodicTime >= gv.iUpdateRate:
             #print("main frame update at %s" % str(now))
             self.lastPeriodicTime = now
@@ -238,7 +248,7 @@ class AppFrame(wx.Frame):
 #--<telloFrame>----------------------------------------------------------------
     def onClose(self, event):
         """ Stop all the thread and close the UI."""
-        gv.iGnMgr.stop()
+        #gv.iGnMgr.stop()
         self.timer.Stop()
         self.Destroy()
 

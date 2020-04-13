@@ -42,6 +42,7 @@ class pwrGenClient(object):
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         print("Arduino connection : %s" %str(self.serialComm.connected))
         # try to connect to the PLCs.
+        self.plc1 = m221.M221(PLC1_IP)
         try:
             self.plc1 = m221.M221(PLC1_IP)
         except:
@@ -49,7 +50,7 @@ class pwrGenClient(object):
         finally:
             result = 'connected' if self.plc1 else 'not response'
             print('PLC 1 [%s] : %s' %(PLC1_IP, result))
-
+        print("xx")
         try:
             self.plc2 = s71200.S7PLC1200(PLC2_IP)
         except:
@@ -72,6 +73,7 @@ class pwrGenClient(object):
         self.server = udpCom.udpServer(None, UDP_PORT)
         # Init the state manager.
         self.stateMgr = stateManager()
+        print("Init finished!")
 
 #--------------------------------------------------------------------------
     def mainLoop(self):
@@ -91,7 +93,9 @@ class pwrGenClient(object):
         respStr = json.dumps({'Cmd':'Set', 'Param': 'Done'})
         msgDict = json.loads(msg.decode('utf-8'))
         if msgDict['Cmd'] == 'Get':
-            if msgDict['Parm'] == 'Gen':
+            if msgDict['Parm'] == 'Con':            
+                print()
+            elif msgDict['Parm'] == 'Gen':
                 respStr = self.stateMgr.getGenInfo()
             else:
                 self.getLoadState()
