@@ -160,8 +160,13 @@ class AppFrame(wx.Frame):
                 gv.iMotoImgPnl.setMotoSpeed(resultDict['Mspd'])
 
             if 'Pspd' in resultDict.keys():
-                gv.iPumpImgPnl.setPumpSpeed(resultDict['Mspd'])
+                gv.iPumpImgPnl.setPumpSpeed(resultDict['Pspd'])
 
+            if 'Spwr' in resultDict.keys():
+                self.sysPnl.setPwrLed('Spwr', colorDict[resultDict['Spwr']])
+
+            if 'Mpwr' in resultDict.keys():
+                self.sysPnl.setPwrLed('Mpwr', colorDict[resultDict['Mpwr']])
 
 #-----------------------------------------------------------------------------
     def _buildGenInfoSizer(self):
@@ -173,14 +178,14 @@ class AppFrame(wx.Frame):
         self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 30))
         self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         uSizer.Add(self.feqLedBt, flag=flagsR, border=2)
-        self.feqLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 30), style=gizmos.LED_ALIGN_CENTER)
+        self.feqLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 35), style=gizmos.LED_ALIGN_CENTER)
         uSizer.Add(self.feqLedDis, flag=flagsR, border=2)
         uSizer.AddSpacer(10)
         # Voltage LED
         self.volLedBt = wx.Button(self, label='Voltage', size=(80, 30))
         self.volLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         uSizer.Add(self.volLedBt, flag=flagsR, border=2)
-        self.volLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 30), style=gizmos.LED_ALIGN_CENTER)
+        self.volLedDis = gizmos.LEDNumberCtrl(self, -1, size = (80, 35), style=gizmos.LED_ALIGN_CENTER)
         uSizer.Add(self.volLedDis, flag=flagsR, border=2)
         uSizer.AddSpacer(10)
         # Smoke LED
@@ -319,33 +324,12 @@ class AppFrame(wx.Frame):
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
-        return
         if (not self.updateLock) and now - self.lastPeriodicTime >= gv.iUpdateRate:
             #print("main frame update at %s" % str(now))
             self.lastPeriodicTime = now
 
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
-
-            result = self.client.sendMsg('Get', resp=True)
-            result = result.decode('utf-8')
-            freq, vol, smk, siren, ldNum = result.split(';')
-            self.setLEDVal(0, str(freq))
-            self.setLEDVal(1, str(vol))
-            self.setLEDVal(2, ldNum)
-            if smk != 'off':
-                gv.iCtrlPanel.smkIdc.SetBackgroundColour(wx.Colour('RED'))
-            else:
-                gv.iCtrlPanel.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
-
-            if siren != 'off':
-                gv.iCtrlPanel.sirenIdc.SetBackgroundColour(wx.Colour('RED'))
-            else:
-                gv.iCtrlPanel.sirenIdc.SetBackgroundColour(wx.Colour('GRAY'))
-
-            #self.parmList[5] = gv.iGnMgr.getMotorSp()
-            #self.parmList[6] = gv.iGnMgr.getPumpSp()
-            self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
 
     def onPumpSpdChange(self, event):
         result = self.client.sendMsg('Set;'+str(self.pumpLedBt.GetSelection()), resp=True)

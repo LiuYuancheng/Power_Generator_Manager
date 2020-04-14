@@ -45,7 +45,7 @@ class PanelMoto(wx.Panel):
         # moto background.
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
         dc.SetBrush(wx.Brush(wx.Colour('Black')))
-        dc.DrawRectangle(5, 5, 30, 15)
+        dc.DrawRectangle(1, 5, 30, 15)
 
         color = 'Gray'
         if self.motoSpd == 'slow':
@@ -128,7 +128,7 @@ class PanelPump(wx.Panel):
         # pump back ground.
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
         dc.SetBrush(wx.Brush(wx.Colour('Black')))
-        dc.DrawRectangle(5, 5, 30, 15)
+        dc.DrawRectangle(1, 5, 30, 15)
 
         color = 'Gray'
         if self.pumpSpd == 'slow':
@@ -283,8 +283,14 @@ class PanelCtrl(wx.Panel):
         ctSizer.Add(self.debugBt, flag=flagsR, border=2)
         return ctSizer
 
-    def setPwrLed(self, name, color):
-        if name = 
+    def setPwrLed(self, name, colorStr):
+        if name == 'Spwr':
+            self.sensorPwBt.SetBackgroundColour(wx.Colour(colorStr))
+        else:
+            self.mainPwrBt.SetBackgroundColour(wx.Colour(colorStr))
+        self.Refresh(False)
+
+
 
 
 

@@ -194,11 +194,11 @@ class stateManager(object):
     def __init__(self):
         # Serial cmd str sequence. 
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
-        self.genDict = {    'Freq': '10.00',     # frequence (dd.dd)
-                            'Volt': '10.00',     # voltage (dd.dd)
-                            'Fled': 'green',    # frequence led (green/amber/off)
+        self.genDict = {    'Freq': '10.20',     # frequence (dd.dd)
+                            'Volt': '10.30',     # voltage (dd.dd)
+                            'Fled': 'off',    # frequence led (green/amber/off)
                             'Vled': 'green',    # voltage led (green/amber/off)
-                            'Mled': 'green',    # motor led (green/amber/off)
+                            'Mled': 'amber',    # motor led (green/amber/off)
                             'Pled': 'green',    # pump led (green/amber/off)
                             'Smok': 'off',      # smoke indicator (fast/slow/off)
                             'Pspd': 'fast',      # pump speed (fast/slow/off)
@@ -209,11 +209,11 @@ class stateManager(object):
                         }
 
         self.loadDict = {   'Indu': 0,      # Industry area
-                            'Airp': 0,      # Air port
+                            'Airp': 1,      # Air port
                             'Resi': 0,      # Residential area
-                            'Stat': 0,      # Stataion power
+                            'Stat': 1,      # Stataion power
                             'TrkA': 0,      # Track A power
-                            'TrkB': 0,      # Track B power
+                            'TrkB': 1,      # Track B power
                             'City': 0,      # City power
                          }
 
