@@ -35,7 +35,7 @@ class AppFrame(wx.Frame):
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         # build the UI.
-        self.SetSizer(self._buidUISizer())
+        self.SetSizer(self._buildUISizer())
 
         self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
         
@@ -115,7 +115,6 @@ class AppFrame(wx.Frame):
     def SetLoadsLed(self, resultStr):
         if resultStr is None:
             print("no response")
-            return
         else:
             resultDict = json.loads(resultStr)
             self.loadPanel.setLoadIndicator(resultDict)
@@ -141,6 +140,12 @@ class AppFrame(wx.Frame):
             if 'Vled' in resultDict.keys():
                 self.volLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Vled']]))
         
+            if 'Mled' in resultDict.keys():
+                self.MotoLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Mled']]))
+
+            if 'Pled' in resultDict.keys():
+                self.pumpLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Pled']]))
+
             if 'Smok' in resultDict.keys():
                 (lb, cl) = ('Smoke [ON ]', 'Red') if resultDict['Smok']=='on' else ('Smoke [OFF]', 'Gray')
                 self.smkIdc.SetLabel(lb)
@@ -151,15 +156,12 @@ class AppFrame(wx.Frame):
                 self.sirenIdc.SetLabel(lb)
                 self.sirenIdc.SetBackgroundColour(wx.Colour(cl))
 
+            if 'Mspd' in resultDict.keys():
+                gv.iMotoImgPnl.setMotoSpeed(resultDict['Mspd'])
 
+            if 'Pspd' in resultDict.keys():
+                gv.iPumpImgPnl.setPumpSpeed(resultDict['Mspd'])
 
-                       
-
-
-
-
-
-            
 
 #-----------------------------------------------------------------------------
     def _buildGenInfoSizer(self):
@@ -224,7 +226,7 @@ class AppFrame(wx.Frame):
         return sizer
 
 #--AppFrame---------------------------------------------------------------------
-    def _buidUISizer(self):
+    def _buildUISizer(self):
         """ Build the main UI Sizer. """
         flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
         sizerAll = wx.BoxSizer(wx.VERTICAL)
@@ -275,7 +277,7 @@ class AppFrame(wx.Frame):
         vbox.AddSpacer(10)
         vbox.Add(wx.StaticText(self, label="PumpSpeed"), flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
         vbox.AddSpacer(10)
-        self.pumpSPCB= wx.ComboBox(self, -1, choices=['off', 'low', 'high'], size=(80, 30))
+        self.pumpSPCB = wx.ComboBox(self, -1, choices=['off', 'low', 'high'], size=(80, 30))
         self.pumpSPCB.SetSelection(0)
         self.pumpSPCB.Bind(wx.EVT_COMBOBOX, self.onPumpSpdChange)
         vbox.Add(self.pumpSPCB, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
