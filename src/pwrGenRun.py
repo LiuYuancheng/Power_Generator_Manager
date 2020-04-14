@@ -13,6 +13,7 @@
 #-----------------------------------------------------------------------------
 import os, sys
 import time
+import json
 import wx
 import wx.gizmos as gizmos
 import udpCom
@@ -37,11 +38,7 @@ class AppFrame(wx.Frame):
         self.SetSizer(self._buidUISizer())
 
         self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
-
-
-
-
-
+        
 
         # Set the periodic call back
         self.lastPeriodicTime = time.time()
@@ -51,9 +48,118 @@ class AppFrame(wx.Frame):
         self.timer.Start(PERIODIC)  # every 500 ms
         self.statusbar = self.CreateStatusBar()
         
+
+        self.connectRsp('Login')
+
+        self.connectRsp('Load')
+
+        self.connectRsp('Gen')
+
         #self.statusbar.SetStatusText('COM Msg to Arduino: %s ' % str(self.parmList))
         self.Bind(wx.EVT_CLOSE, self.onClose)
+
+        self.Refresh(False)
         print("Program init finished.")
+
+#-----------------------------------------------------------------------------
+    def connectRsp(self, evnt, parm=None):
+        """ try to connect to the raspberry pi and send cmd based on the 
+            evnt setting.
+        """
+        if evnt == 'Login':
+            # Log in and get the connection state.
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.setConnLED(result)
+        elif evnt == 'Load':
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Load'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetLoadsLed(result)
+        elif evnt == 'Gen':
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Gen'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLed(result)
+
+
+
+
+#-----------------------------------------------------------------------------
+    def setConnLED(self, resultStr):
+        """ set and update the LED display in the connection state area
+        """
+        if resultStr is None:
+            self.rspLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+            self.serialLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+            self.plc1LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+            self.plc2LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+            self.plc3LedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        else: 
+            resultDict = json.loads(resultStr)
+            if 'Serial' in resultDict.keys():
+                colorStr = 'Green' if resultDict['Serial'] else 'GRAY'
+                self.serialLedBt.SetBackgroundColour(wx.Colour(colorStr))
+
+            if 'Plc1' in resultDict.keys():
+                colorStr = 'Green' if resultDict['Plc1'] else 'GRAY'
+                self.plc1LedBt.SetBackgroundColour(wx.Colour(colorStr))
+
+            if 'Plc2' in resultDict.keys():
+                colorStr = 'Green' if resultDict['Plc2'] else 'GRAY'
+                self.plc2LedBt.SetBackgroundColour(wx.Colour(colorStr))
+            
+            if 'Plc3' in resultDict.keys():
+                colorStr = 'Green' if resultDict['Plc3'] else 'GRAY'
+                self.plc3LedBt.SetBackgroundColour(wx.Colour(colorStr))
+
+#-----------------------------------------------------------------------------
+    def SetLoadsLed(self, resultStr):
+        if resultStr is None:
+            print("no response")
+            return
+        else:
+            resultDict = json.loads(resultStr)
+            self.loadPanel.setLoadIndicator(resultDict)
+
+    def SetGensLed(self, resultStr):
+        if resultStr is None:
+            print("no response")
+            return
+        else:
+            colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
+                         'on': 'Green', 'off': 'Gray', 'slow': 'Yellow', 'fast': 'Red'}
+            resultDict = json.loads(resultStr)
+            # frequence display
+            if 'Freq' in resultDict.keys():
+                self.feqLedDis.SetValue(str(resultDict['Freq']))
+            # frequence led
+            if 'Fled' in resultDict.keys():
+                self.feqLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Fled']]))
+
+            if 'Volt' in resultDict.keys():
+                self.volLedDis.SetValue(str(resultDict['Volt']))
+                
+            if 'Vled' in resultDict.keys():
+                self.volLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Vled']]))
+        
+            if 'Smok' in resultDict.keys():
+                (lb, cl) = ('Smoke [ON ]', 'Red') if resultDict['Smok']=='on' else ('Smoke [OFF]', 'Gray')
+                self.smkIdc.SetLabel(lb)
+                self.smkIdc.SetBackgroundColour(wx.Colour(cl))
+
+            if 'Sirn' in resultDict.keys():
+                (lb, cl) = ('Siren [ON ]', 'Red') if resultDict['Sirn']=='on' else ('Siren [OFF]', 'Gray')
+                self.sirenIdc.SetLabel(lb)
+                self.sirenIdc.SetBackgroundColour(wx.Colour(cl))
+
+
+
+                       
+
+
+
+
+
+            
 
 #-----------------------------------------------------------------------------
     def _buildGenInfoSizer(self):
@@ -96,7 +202,7 @@ class AppFrame(wx.Frame):
         sizer.Add(wx.StaticText(self, -1, 'Connection State : '), flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL)
         # raspberry PI connection.
         self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
-        self.rspLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        self.rspLedBt.SetBackgroundColour(wx.Colour('Green'))
         sizer.Add(self.rspLedBt)
         # serial port connection led state.
         self.serialLedBt = wx.Button(self, label='COMM', size=(75, 30))

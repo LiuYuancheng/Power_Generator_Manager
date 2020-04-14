@@ -42,30 +42,30 @@ class pwrGenClient(object):
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         print("Arduino connection : %s" %str(self.serialComm.connected))
         # try to connect to the PLCs.
-        self.plc1 = m221.M221(PLC1_IP)
-        try:
-            self.plc1 = m221.M221(PLC1_IP)
-        except:
-            self.plc1 = None
-        finally:
-            result = 'connected' if self.plc1 else 'not response'
-            print('PLC 1 [%s] : %s' %(PLC1_IP, result))
-        print("xx")
-        try:
-            self.plc2 = s71200.S7PLC1200(PLC2_IP)
-        except:
-            self.plc2 = None
-        finally:
-            result = 'connected' if self.plc2 else 'not response'
-            print('PLC 2 [%s] : %s' %(PLC1_IP, result))
+        self.plc1 = self.plc2 = self.plc3 = None
+        if not TEST_MODE:
+            try:
+                self.plc1 = m221.M221(PLC1_IP)
+            except:
+                self.plc1 = None
+            finally:
+                result = 'connected' if self.plc1 else 'not response'
+                print('PLC 1 [%s] : %s' %(PLC1_IP, result))
+            try:
+                self.plc2 = s71200.S7PLC1200(PLC2_IP)
+            except:
+                self.plc2 = None
+            finally:
+                result = 'connected' if self.plc2 else 'not response'
+                print('PLC 2 [%s] : %s' %(PLC1_IP, result))
 
-        try:
-            self.plc3 = m221.M221(PLC3_IP)
-        except:
-            self.plc3 = None
-        finally:
-            result = 'connected' if self.plc3 else 'not response'
-            print('PLC 3 [%s] : %s' %(PLC1_IP, result))
+            try:
+                self.plc3 = m221.M221(PLC3_IP)
+            except:
+                self.plc3 = None
+            finally:
+                result = 'connected' if self.plc3 else 'not response'
+                print('PLC 3 [%s] : %s' %(PLC1_IP, result))
         
         # Set the load number.
         self.loadNum = 0 
@@ -93,12 +93,22 @@ class pwrGenClient(object):
         respStr = json.dumps({'Cmd':'Set', 'Param': 'Done'})
         msgDict = json.loads(msg.decode('utf-8'))
         if msgDict['Cmd'] == 'Get':
-            if msgDict['Parm'] == 'Con':            
-                print()
+            if msgDict['Parm'] == 'Con':
+                #
+                if TEST_MODE:
+                    self.serialComm.connected = self.plc1 = self.plc2 = self.plc3= True
+
+                fbDict = { 'Serial': self.serialComm.connected,
+                        'Plc1': not (self.plc1 is None),
+                        'Plc2': not (self.plc2 is None),
+                        'Plc3': not (self.plc2 is None)
+                }
+                respStr = json.dumps(fbDict)
             elif msgDict['Parm'] == 'Gen':
                 respStr = self.stateMgr.getGenInfo()
             else:
-                self.getLoadState()
+                if not TEST_MODE:
+                    self.getLoadState()
                 respStr = self.stateMgr.getLoadInfo()
         elif msgDict['Cmd'] == 'SetGen':
             self.stateMgr.updateGenSerState(msgDict['Parm'])

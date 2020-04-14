@@ -36,7 +36,7 @@ class PanelMoto(wx.Panel):
         dc = wx.PaintDC(self)
         w, h = self.panelSize
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
-        motoSp = gv.iGnMgr.getMotorSp()
+        motoSp = 30 # gv.iGnMgr.getMotorSp()
         color = 'GREEN'
         if motoSp < 50 : 
             color = 'YELLOW'
@@ -90,7 +90,7 @@ class PanelMoto(wx.Panel):
             update the panel, if called as updateDisplay(updateFlag=?) the function
             will set the self update flag.
         """
-        ang = 30 + (gv.iGnMgr.getMotorSp()-50)*5
+        ang = 30 + (30-50)*5
         self.angle += ang 
         self.angle = self.angle%360
         self.Refresh(False)
@@ -119,7 +119,7 @@ class PanelPump(wx.Panel):
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
         dc.SetPen(wx.Pen('BLACK'))
         textList = ('Neutral', 'Lower', 'Medium', 'Higher')
-        dc.DrawText(textList[gv.iGnMgr.getPumpSp()], 5, 5)
+        dc.DrawText(textList[1], 5, 5)
         colorList = ('GRAy','YELLOW', '#36ff27', 'RED')
         rect = self.pos / 5
         for i in range(1, 21):
@@ -127,7 +127,7 @@ class PanelPump(wx.Panel):
                 dc.SetBrush(wx.Brush('#075100'))
                 dc.DrawRectangle(88, i*3+27, 25, 4)
             else:
-                dc.SetBrush(wx.Brush(colorList[gv.iGnMgr.getPumpSp()]))
+                dc.SetBrush(wx.Brush(colorList[1]))
                 dc.DrawRectangle(88, i*3+27, 25, 4)
 
 #--PanelImge--------------------------------------------------------------------
