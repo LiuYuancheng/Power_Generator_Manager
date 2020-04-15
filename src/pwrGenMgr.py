@@ -155,12 +155,14 @@ class pwrGenClient(object):
 
 #--------------------------------------------------------------------------
     def setSensorPwr(self, val):
+        if TEST_MODE: return
         parm = 1 if val=='on' else 0
         self.plc3.writeMem('M4', parm)
         self.plc3.writeMem('M5', parm)
 
 #--------------------------------------------------------------------------
     def setMainPwr(self, val):
+        if TEST_MODE: return
         parm = 1 if val=='on' else 0
         self.plc3.writeMem('M6', parm)
 
@@ -201,13 +203,13 @@ class stateManager(object):
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
         self.genDict = {    'Freq': '10.20',     # frequence (dd.dd)
                             'Volt': '10.30',     # voltage (dd.dd)
-                            'Fled': 'off',    # frequence led (green/amber/off)
+                            'Fled': 'green',    # frequence led (green/amber/off)
                             'Vled': 'green',    # voltage led (green/amber/off)
                             'Mled': 'amber',    # motor led (green/amber/off)
                             'Pled': 'green',    # pump led (green/amber/off)
                             'Smok': 'off',      # smoke indicator (fast/slow/off)
-                            'Pspd': 'fast',      # pump speed (fast/slow/off)
-                            'Mspd': 'slow',      # moto speed (fast/slow/off)
+                            'Pspd': 'low',      # pump speed (high/low/off)
+                            'Mspd': 'low',      # moto speed (high/low/off)
                             'Sirn': 'off',      # siren (on/off)
                             'Spwr': 'off',      # sensor power (on/off)
                             'Mpwr': 'on'        # main power (on/off)
@@ -245,7 +247,7 @@ class stateManager(object):
         valList = []
         for keyStr in self.serialSqu:
             if keyStr in changeDict.keys():
-                self.genDict[keyStr] = changeDict[changeDict]
+                self.genDict[keyStr] = changeDict[keyStr]
                 valList.append(self.genDict[keyStr])
             else:
                 valList.append('-') # append the ingore char if the value not change.
@@ -253,12 +255,12 @@ class stateManager(object):
 
 #--------------------------------------------------------------------------
     def updateGenPlcState(self, changeDict):
-        for keyStr in changeDict:
-            self.genDict[keyStr] = changeDict[changeDict]
+        for keyStr in changeDict.keys():
+            self.genDict[keyStr] = changeDict[keyStr]
 
 #--------------------------------------------------------------------------
     def updateLoadPlcState(self, changeDict):
-        for keyStr in changeDict:
+        for keyStr in changeDict.keys():
             self.loadDict[keyStr] = changeDict[keyStr]
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------

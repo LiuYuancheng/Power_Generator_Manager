@@ -32,10 +32,11 @@ class PanelMoto(wx.Panel):
         self.motoSpd = 'off'
 
     def setMotoSpeed(self, speed):
-        if not (speed in ('off', 'slow', 'fast')): 
+        if not (speed in ('off', 'low', 'high')): 
             print('PanelMoto : input speed value is invalid %s' %str(speed))
         else:
             self.motoSpd = speed
+            self.updateDisplay(updateFlag=True)
 
 #--PanelImge--------------------------------------------------------------------
     def onPaint(self, evt):
@@ -48,9 +49,9 @@ class PanelMoto(wx.Panel):
         dc.DrawRectangle(1, 5, 30, 15)
 
         color = 'Gray'
-        if self.motoSpd == 'slow':
+        if self.motoSpd == 'low':
             color = 'Green'
-        elif self.motoSpd == 'fast':
+        elif self.motoSpd == 'high':
             color = 'Yellow'        
         dc.SetPen(wx.Pen(color, width=5, style=wx.PENSTYLE_SOLID))
         dc.SetTextForeground(wx.Colour(color))
@@ -90,8 +91,10 @@ class PanelMoto(wx.Panel):
             update the panel, if called as updateDisplay(updateFlag=?) the function
             will set the self update flag.
         """
-        if self.motoSpd == 'off': return
-        ang = 20 if self.motoSpd == 'slow' else 40
+        if self.motoSpd == 'off' and (not updateFlag): 
+            self.angle = 0   
+            return
+        ang = 20 if self.motoSpd == 'low' else 40
         self.angle = (self.angle + ang)%360
         self.Refresh(False)
         self.Update()
@@ -114,11 +117,11 @@ class PanelPump(wx.Panel):
 
 
     def setPumpSpeed(self, speed):
-        if not (speed in ('off', 'slow', 'fast')): 
+        if not (speed in ('off', 'low', 'high')): 
             print('PanelMoto : input speed value is invalid %s' %str(speed))
         else:
             self.pumpSpd = speed
-
+            self.updateDisplay(updateFlag=True)
 
 #--PanelImge--------------------------------------------------------------------
     def onPaint(self, evt):
@@ -131,9 +134,9 @@ class PanelPump(wx.Panel):
         dc.DrawRectangle(1, 5, 30, 15)
 
         color = 'Gray'
-        if self.pumpSpd == 'slow':
+        if self.pumpSpd == 'low':
             color = 'Green'
-        elif self.pumpSpd == 'fast':
+        elif self.pumpSpd == 'high':
             color = 'Yellow'
 
 
@@ -182,11 +185,11 @@ class PanelPump(wx.Panel):
             update the panel, if called as updateDisplay(updateFlag=?) the function
             will set the self update flag.
         """
-        if self.pumpSpd == 'off':
-            self.maxVal = 10
+        if self.pumpSpd == 'off' and (not updateFlag):
+            self.maxVal = self.pos = 80
             return
-        self.maxVal = 40 if self.pumpSpd == 'slow' else 80
-        addVal = 10 if self.pumpSpd == 'slow' else 20
+        self.maxVal = 40 if self.pumpSpd == 'low' else 80
+        addVal = 10 if self.pumpSpd == 'low' else 20
         if self.pos < 100 - self.maxVal:
             self.pos = 100
         else:
@@ -314,8 +317,8 @@ class PanelDebug(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
-        self.dataList = ['0', '0', 'off', 'off', 'red', 'red', 'off', 'on']
-        self.fieldlList = []
+        self.genFieldlList = {}     # ardurino setting field list. 
+        self.plcFieldList = {}      # plc setting field list.
         self.SetSizer(self._buidUISizer())
 
 #--UIFrame---------------------------------------------------------------------
@@ -326,74 +329,66 @@ class PanelDebug(wx.Panel):
         gs = wx.FlexGridSizer(13, 2, 5, 5)
 
         gs.Add(wx.StaticText(self, label=' Frequency : '), flag=flagsR, border=2)
-        freText = wx.TextCtrl(self, -1, "0.0")
-        self.fieldlList.append(freText)
-        gs.Add(freText, flag=flagsR, border=2)
+        self.genFieldlList['Freq'] = wx.TextCtrl(self, -1, "0.0")
+        gs.Add(self.genFieldlList['Freq'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Voltage : '), flag=flagsR, border=2)
-        volText = wx.TextCtrl(self, -1, "0.0")
-        self.fieldlList.append(volText)
-        gs.Add(volText, flag=flagsR, border=2)
+        self.genFieldlList['Volt'] = wx.TextCtrl(self, -1, "0.0")
+        gs.Add(self.genFieldlList['Volt'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Frequency LED : '), flag=flagsR, border=2)
-        freLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
-        freLedCB.SetSelection(0)
-        self.fieldlList.append(freLedCB)
-        gs.Add(freLedCB, flag=flagsR, border=2)
+        self.genFieldlList['Fled'] = wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        self.genFieldlList['Fled'].SetSelection(0)
+        gs.Add(self.genFieldlList['Fled'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Voltage LED : '), flag=flagsR, border=2)
-        volLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
-        volLedCB.SetSelection(0)
-        self.fieldlList.append(volLedCB)
-        gs.Add(volLedCB, flag=flagsR, border=2)
+        self.genFieldlList['Vled'] = wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        self.genFieldlList['Vled'].SetSelection(0)
+        gs.Add(self.genFieldlList['Vled'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Motor LED : '), flag=flagsR, border=2)
-        motLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
-        motLedCB.SetSelection(0)
-        self.fieldlList.append(motLedCB)
-        gs.Add(motLedCB, flag=flagsR, border=2)
+        self.genFieldlList['Mled']= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        self.genFieldlList['Mled'].SetSelection(0)
+        gs.Add(self.genFieldlList['Mled'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Pump LED : '), flag=flagsR, border=2)
-        pumLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
-        pumLedCB.SetSelection(0)
-        self.fieldlList.append(pumLedCB)
-        gs.Add(pumLedCB, flag=flagsR, border=2)
+        self.genFieldlList['Pled']= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        self.genFieldlList['Pled'].SetSelection(0)
+        gs.Add(self.genFieldlList['Pled'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Smoke : '), flag=flagsR, border=2)
-        smokeCB= wx.ComboBox(self, -1, choices=['slow','fast', 'off'])
-        smokeCB.SetSelection(0)
-        self.fieldlList.append(smokeCB)
-        gs.Add(smokeCB, flag=flagsR, border=2)
+        self.genFieldlList['Smok']= wx.ComboBox(self, -1, choices=['slow','fast', 'off'])
+        self.genFieldlList['Smok'].SetSelection(0)
+        gs.Add(self.genFieldlList['Smok'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Siren : '), flag=flagsR, border=2)
-        sirenCB= wx.ComboBox(self, -1, choices=['on', 'off'])
-        sirenCB.SetSelection(0)
-        self.fieldlList.append(sirenCB)
-        gs.Add(sirenCB, flag=flagsR, border=2)
+        self.genFieldlList['Sirn']= wx.ComboBox(self, -1, choices=['on', 'off'])
+        self.genFieldlList['Sirn'].SetSelection(0)
+        gs.Add(self.genFieldlList['Sirn'], flag=flagsR, border=2)
 
 
         gs.Add(wx.StaticText(self, label=' Pump speed : '), flag=flagsR, border=2)
-        self.pumpSP= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
-        self.pumpSP.SetSelection(0)
-        gs.Add(self.pumpSP, flag=flagsR, border=2)
+        self.plcFieldList['Pspd']= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
+        self.plcFieldList['Pspd'].SetSelection(0)
+        gs.Add(self.plcFieldList['Pspd'], flag=flagsR, border=2)
 
 
         gs.Add(wx.StaticText(self, label=' Moto speed : '), flag=flagsR, border=2)
-        self.MotoSP= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
-        self.MotoSP.SetSelection(0)
-        gs.Add(self.MotoSP, flag=flagsR, border=2)
+        self.plcFieldList['Mspd']= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
+        self.plcFieldList['Mspd'].SetSelection(0)
+        gs.Add(self.plcFieldList['Mspd'], flag=flagsR, border=2)
 
 
         gs.Add(wx.StaticText(self, label=' All sensor control : '), flag=flagsR, border=2)
-        self.senPower= wx.ComboBox(self, -1, choices=['on', 'off'])
-        self.senPower.SetSelection(0)
-        gs.Add(self.senPower, flag=flagsR, border=2)
+        self.plcFieldList['Spwr']= wx.ComboBox(self, -1, choices=['on', 'off'])
+        self.plcFieldList['Spwr'].SetSelection(0)
+        gs.Add(self.plcFieldList['Spwr'], flag=flagsR, border=2)
 
 
         gs.Add(wx.StaticText(self, label=' All power control : '), flag=flagsR, border=2)
-        self.AllPower= wx.ComboBox(self, -1, choices=['on', 'off'])
-        self.AllPower.SetSelection(0)
-        gs.Add(self.AllPower, flag=flagsR, border=2)
+        self.plcFieldList['Mpwr']= wx.ComboBox(self, -1, choices=['on', 'off'])
+        self.plcFieldList['Mpwr'].SetSelection(0)
+        gs.Add(self.plcFieldList['Mpwr'], flag=flagsR, border=2)
         gs.AddSpacer(5)
 
         self.sendBt = wx.Button(self, label='Set')
@@ -405,7 +400,16 @@ class PanelDebug(wx.Panel):
 
 
     def onSend(self, event):
-        pass
+        """ Send the setting to the Raspberry PI
+        """
+        print('Send Gen setting debug message')
+        genDict = {key:self.genFieldlList[key].GetValue() for key in self.genFieldlList.keys()}
+        gv.iMainFrame.connectRsp('SetGen', parm=genDict)
+
+        print('Send PLC setting deubg message')
+        plcDict = {key:self.plcFieldList[key].GetValue() for key in self.plcFieldList.keys()}
+        gv.iMainFrame.connectRsp('SetPLC', parm=plcDict)
+
 
 
 

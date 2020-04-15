@@ -83,7 +83,7 @@ class AppFrame(wx.Frame):
             msgStr = json.dumps({'Cmd': 'SetGen', 'Parm': parm})
             result = self.connector.sendMsg(msgStr, resp=True)
             self.SetGensLed(result)
-        elif evnt == 'SetGen':
+        elif evnt == 'SetPLC':
             msgStr = json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
             result = self.connector.sendMsg(msgStr, resp=True)
             self.SetGensLed(result)
@@ -130,6 +130,7 @@ class AppFrame(wx.Frame):
             print("no response")
             return
         else:
+            print(resultStr)
             colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
                          'on': 'Green', 'off': 'Gray', 'slow': 'Yellow', 'fast': 'Red'}
             resultDict = json.loads(resultStr)
@@ -153,9 +154,9 @@ class AppFrame(wx.Frame):
                 self.pumpLedBt.SetBackgroundColour(wx.Colour(colorDict[resultDict['Pled']]))
 
             if 'Smok' in resultDict.keys():
-                (lb, cl) = ('Smoke [ON ]', 'Red') if resultDict['Smok']=='on' else ('Smoke [OFF]', 'Gray')
+                lb= 'Smoke [OFF]'if resultDict['Smok']=='off' else 'Smoke [ON ]'
                 self.smkIdc.SetLabel(lb)
-                self.smkIdc.SetBackgroundColour(wx.Colour(cl))
+                self.smkIdc.SetBackgroundColour(wx.Colour(colorDict[resultDict['Pled']]))
 
             if 'Sirn' in resultDict.keys():
                 (lb, cl) = ('Siren [ON ]', 'Red') if resultDict['Sirn']=='on' else ('Siren [OFF]', 'Gray')
@@ -315,7 +316,6 @@ class AppFrame(wx.Frame):
                     style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
         sizerAll.AddSpacer(5)
 
-
         return sizerAll
 
 #-----------------------------------------------------------------------------
@@ -325,6 +325,11 @@ class AppFrame(wx.Frame):
         val = 1 if cb.GetValue() else 0
         gv.iGnMgr.setLoad([idx],[val])
 
+#-----------------------------------------------------------------------------
+    def onPumpSpdChange(self, evnt):
+        msgStr = self.pumpSPCB.GetValue()
+        print("AppFrame: Set pump speed to %s " %msgStr)
+        self.connectRsp('SetPLC', parm={'Pspd':msgStr})
 
 #--AppFrame---------------------------------------------------------------------
     def periodic(self, event):
@@ -342,25 +347,6 @@ class AppFrame(wx.Frame):
         #gv.iGnMgr.stop()
         self.timer.Stop()
         self.Destroy()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
