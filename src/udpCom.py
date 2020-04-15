@@ -34,6 +34,7 @@ class udpClient(object):
                 return the bytes format response if it is set to True. 
         """
         if not ipAddr is None: self.ipAddr = ipAddr  # reset ip address.
+        if self.client is None: return None # Check whether disconnected.
         if not isinstance(msg, bytes): msg = str(msg).encode('utf-8')
         self.client.sendto(msg, self.ipAddr)
         if resp:
@@ -51,7 +52,7 @@ class udpClient(object):
 #--udpClient-------------------------------------------------------------------
     def disconnect(self):
         """ Send a empty logout message and close the socket."""
-        self.sendMsg('', resp=False)
+        self.sendMsg('123', resp=False)
         time.sleep(RESP_TIME) # sleep very short while before close the socket to \
         # make sure the server have enought time to handle the close method, when \
         # server computer is fast, this is not a problem.

@@ -109,7 +109,7 @@ class PanelPump(wx.Panel):
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
         self.maxVal = 50    # max pump line hight
-        self.pos = 50       # pump line position
+        self.pos = 80       # pump line position (from top to buttom)
         self.pumpSpd = 'off'
 
 
@@ -256,6 +256,7 @@ class PanelCtrl(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
+        self.debugFrame = None
         self.SetSizer(self._buidUISizer())
 
 #--PanelCtrl-------------------------------------------------------------------
@@ -280,6 +281,7 @@ class PanelCtrl(wx.Panel):
         ctSizer.AddSpacer(10)
         
         self.debugBt = wx.Button(self, label='Debug Panel >> ', size=(120, 30))
+        self.debugBt.Bind(wx.EVT_BUTTON, self.showDebug)
         ctSizer.Add(self.debugBt, flag=flagsR, border=2)
         return ctSizer
 
@@ -290,6 +292,120 @@ class PanelCtrl(wx.Panel):
             self.mainPwrBt.SetBackgroundColour(wx.Colour(colorStr))
         self.Refresh(False)
 
+    def showDebug(self, evnt):
+        if self.debugFrame == None: 
+            posF = gv.iMainFrame.GetPosition()
+            self.debugFrame = wx.MiniFrame(gv.iMainFrame, -1, 'Debug Panel', pos=(
+                posF[0]+800, posF[1]), size=(240, 420), style=wx.DEFAULT_FRAME_STYLE)
+            gv.iDetailPanel = PanelDebug(self.debugFrame)
+            self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
+            self.debugFrame.Show()
+
+    def infoWinClose(self, event):
+        """ Close the pop-up detail information window and clear paremeters."""
+        if self.debugFrame:
+            self.debugFrame.Destroy()
+            self.debugFrame = gv.iDetailPanel = None
+
+
+class PanelDebug(wx.Panel):
+    """ Function control panel."""
+
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.SetBackgroundColour(wx.Colour(200, 210, 200))
+        self.dataList = ['0', '0', 'off', 'off', 'red', 'red', 'off', 'on']
+        self.fieldlList = []
+        self.SetSizer(self._buidUISizer())
+
+#--UIFrame---------------------------------------------------------------------
+    def _buidUISizer(self):
+        """ Build the main UI Sizer. """
+        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        mSizer = wx.BoxSizer(wx.HORIZONTAL)
+        gs = wx.FlexGridSizer(13, 2, 5, 5)
+
+        gs.Add(wx.StaticText(self, label=' Frequency : '), flag=flagsR, border=2)
+        freText = wx.TextCtrl(self, -1, "0.0")
+        self.fieldlList.append(freText)
+        gs.Add(freText, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Voltage : '), flag=flagsR, border=2)
+        volText = wx.TextCtrl(self, -1, "0.0")
+        self.fieldlList.append(volText)
+        gs.Add(volText, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Frequency LED : '), flag=flagsR, border=2)
+        freLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        freLedCB.SetSelection(0)
+        self.fieldlList.append(freLedCB)
+        gs.Add(freLedCB, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Voltage LED : '), flag=flagsR, border=2)
+        volLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        volLedCB.SetSelection(0)
+        self.fieldlList.append(volLedCB)
+        gs.Add(volLedCB, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Motor LED : '), flag=flagsR, border=2)
+        motLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        motLedCB.SetSelection(0)
+        self.fieldlList.append(motLedCB)
+        gs.Add(motLedCB, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Pump LED : '), flag=flagsR, border=2)
+        pumLedCB= wx.ComboBox(self, -1, choices=['green', 'amber', 'red'])
+        pumLedCB.SetSelection(0)
+        self.fieldlList.append(pumLedCB)
+        gs.Add(pumLedCB, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Smoke : '), flag=flagsR, border=2)
+        smokeCB= wx.ComboBox(self, -1, choices=['slow','fast', 'off'])
+        smokeCB.SetSelection(0)
+        self.fieldlList.append(smokeCB)
+        gs.Add(smokeCB, flag=flagsR, border=2)
+
+        gs.Add(wx.StaticText(self, label=' Siren : '), flag=flagsR, border=2)
+        sirenCB= wx.ComboBox(self, -1, choices=['on', 'off'])
+        sirenCB.SetSelection(0)
+        self.fieldlList.append(sirenCB)
+        gs.Add(sirenCB, flag=flagsR, border=2)
+
+
+        gs.Add(wx.StaticText(self, label=' Pump speed : '), flag=flagsR, border=2)
+        self.pumpSP= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
+        self.pumpSP.SetSelection(0)
+        gs.Add(self.pumpSP, flag=flagsR, border=2)
+
+
+        gs.Add(wx.StaticText(self, label=' Moto speed : '), flag=flagsR, border=2)
+        self.MotoSP= wx.ComboBox(self, -1, choices=['off', 'low', 'high'])
+        self.MotoSP.SetSelection(0)
+        gs.Add(self.MotoSP, flag=flagsR, border=2)
+
+
+        gs.Add(wx.StaticText(self, label=' All sensor control : '), flag=flagsR, border=2)
+        self.senPower= wx.ComboBox(self, -1, choices=['on', 'off'])
+        self.senPower.SetSelection(0)
+        gs.Add(self.senPower, flag=flagsR, border=2)
+
+
+        gs.Add(wx.StaticText(self, label=' All power control : '), flag=flagsR, border=2)
+        self.AllPower= wx.ComboBox(self, -1, choices=['on', 'off'])
+        self.AllPower.SetSelection(0)
+        gs.Add(self.AllPower, flag=flagsR, border=2)
+        gs.AddSpacer(5)
+
+        self.sendBt = wx.Button(self, label='Set')
+        self.sendBt.Bind(wx.EVT_BUTTON, self.onSend)
+        gs.Add(self.sendBt, flag=flagsR, border=2)
+        
+        mSizer.Add(gs, flag=flagsR, border=2)
+        return mSizer
+
+
+    def onSend(self, event):
+        pass
 
 
 

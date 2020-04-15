@@ -111,7 +111,11 @@ class pwrGenClient(object):
                     self.getLoadState()
                 respStr = self.stateMgr.getLoadInfo()
         elif msgDict['Cmd'] == 'SetGen':
-            self.stateMgr.updateGenSerState(msgDict['Parm'])
+            msgStr = self.stateMgr.updateGenSerState(msgDict['Parm'])
+            if self.serialComm.connected and (not TEST_MODE):
+                print('Write message <%s> to Ardurino' %msgStr)
+                self.serialComm.write(msgStr.encode('utf-8'))
+            respStr = self.stateMgr.getGenInfo()
 
         elif msgDict['Cmd'] == 'SetPLC':
             # update the related plc
@@ -128,6 +132,7 @@ class pwrGenClient(object):
                 self.setMotoSpeed(msgDict['Parm']['Pspd'])
             # updaste the state manager
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
+            respStr = self.stateMgr.getGenInfo()
         return respStr
 
 #--------------------------------------------------------------------------
@@ -144,9 +149,9 @@ class pwrGenClient(object):
         if TEST_MODE: return
         # change the plc state to do the action.
         mSpeedDict = {'off': (False, False), 'slow': (False, True), 'fast': (True, False)}
-        self.plc2.writeMem('qx0.3', mSpeedDict[0])
+        self.plc2.writeMem('qx0.3', mSpeedDict[val][0])
         time.sleep(0.01) # need we sleep a shot while for plc to response?
-        self.plc2.writeMem('qx0.4', mSpeedDict[1])
+        self.plc2.writeMem('qx0.4', mSpeedDict[val][1])
 
 #--------------------------------------------------------------------------
     def setSensorPwr(self, val):

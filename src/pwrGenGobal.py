@@ -27,5 +27,6 @@ iMainFrame = None   # MainFrame.
 iMotoImgPnl = None  # Image panel.
 iPumpImgPnl = None
 iCtrlPanel = None   # control panel
+iDetailPanel = None
 iUpdateRate = 0.5     # main frame update rate 1 sec.
 iGnMgr = None

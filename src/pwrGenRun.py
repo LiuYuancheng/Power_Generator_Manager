@@ -79,8 +79,14 @@ class AppFrame(wx.Frame):
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Gen'})
             result = self.connector.sendMsg(msgStr, resp=True)
             self.SetGensLed(result)
-
-
+        elif evnt == 'SetGen':
+            msgStr = json.dumps({'Cmd': 'SetGen', 'Parm': parm})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLed(result)
+        elif evnt == 'SetGen':
+            msgStr = json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLed(result)
 
 
 #-----------------------------------------------------------------------------
@@ -327,15 +333,8 @@ class AppFrame(wx.Frame):
         if (not self.updateLock) and now - self.lastPeriodicTime >= gv.iUpdateRate:
             #print("main frame update at %s" % str(now))
             self.lastPeriodicTime = now
-
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
-
-    def onPumpSpdChange(self, event):
-        result = self.client.sendMsg('Set;'+str(self.pumpLedBt.GetSelection()), resp=True)
-
-    def setLEDVal(self, idx, val):
-        self.ledList[idx].SetValue(str(val))
 
 #--<telloFrame>----------------------------------------------------------------
     def onClose(self, event):
