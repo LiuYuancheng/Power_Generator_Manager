@@ -328,10 +328,10 @@ class AppFrame(wx.Frame):
                 gv.iPumpImgPnl.setPumpSpeed(resultDict['Pspd'])
             # All sensor power indicator.
             if 'Spwr' in resultDict.keys():
-                self.sysPnl.setPwrLed('Spwr', colorDict[resultDict['Spwr']])
+                self.sysPnl.setPwrLED('Spwr', colorDict[resultDict['Spwr']])
             # Main power indicator.
             if 'Mpwr' in resultDict.keys():
-                self.sysPnl.setPwrLed('Mpwr', colorDict[resultDict['Mpwr']])
+                self.sysPnl.setPwrLED('Mpwr', colorDict[resultDict['Mpwr']])
 
             self.Refresh(False)
 
