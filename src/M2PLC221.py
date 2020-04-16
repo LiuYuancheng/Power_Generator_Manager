@@ -2,8 +2,8 @@
 #-----------------------------------------------------------------------------
 # Name:         M2PLC221.py
 #
-# Purpose:     This module is used to connect the Schneider M2xx PLC. The related
-#              PLC setting link(function code):
+# Purpose:     This module is used to connect to the Schneider M2xx PLC. The
+#              related PLC setting link(function code):
 #              https://www.schneider-electric.com/en/faqs/FA308725/
 #              https://www.schneider-electric.com/en/faqs/FA295250/
 #              https://www.schneider-electric.com/en/faqs/FA249614/
@@ -15,9 +15,14 @@
 # License:     YC @ NUS
 #-----------------------------------------------------------------------------
 import socket
-import sys
+from platform import python_version
 
-PLC_PORT = 502
+# Check the python version, if < 3.6 use bytes.dencode('hex') to decode the 
+# PLC response data, eles use bytes.hex() decode.
+DECODE_MD = (float(python_version()[0:3]) < 3.6)
+
+PLC_PORT = 502  # Mode bus TCP port.
+BUFF_SZ = 1024  # TCP buffer size.
 # M221 PLC memory address list.
 MEM_ADDR = {'M0':   '0000',
             'M1':   '0001',
@@ -39,65 +44,78 @@ PROTOCOL_ID = '0000'
 UID = '01'
 BIT_COUNT = '0001'
 BYTE_COUNT = '01'
-LENGTH = '0008'
-M_FC = '0f' # memory access function code.
-M_RD = '01' # read internal bits %M
-
-
-
-
+W_LENGTH = '0008'   # write byte lenght
+R_LENGTH = '0006'   # read byte length
+M_FC = '0f' # memory access function code(write).
+M_RD = '01' # memory state fetch internal bits %M
 VALUES = {'0': '00', '1': '01'}
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class M221(object):
     def __init__(self, ip, debug=False):
         self.ip = ip
+        self.debug = debug
+        self.connected = False
         self.plcAgent = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.plcAgent.connect((self.ip, 502))
+        try:
+            self.plcAgent.connect((self.ip, 502))
+            self.connected = True
+        except OSError as error:
+            print("M221: Can not access to the PLC [%s]" % str(self.plcAgent))
+            print(error)
 
-    def redMem(self):
-        """ Set the plc memory address. mTag: (str)memory tag, val:(int) 0/1
-        """
-        modbus_payload = TID + PROTOCOL_ID + '0006' + UID + M_RD+"0000003d"
-        print(modbus_payload)
-        bdata = bytes.fromhex(modbus_payload)
-        self.plcAgent.send(bdata)
-        #response = self.plcAgent.recv(1024).dencode('hex')
-        response = self.plcAgent.recv(1024).hex()
-        #response = self.plcAgent.recv(1024).hex()
-        print(response)
+#-----------------------------------------------------------------------------
+    def readMem(self):
+        """ Fetch the current plc memory state."""
+        modbusMsg = TID + PROTOCOL_ID + R_LENGTH + UID + M_RD+'0000003d'
+        response = self._getRespStr(modbusMsg)
         return str(response)
 
-
+#-----------------------------------------------------------------------------
     def writeMem(self, mTag, val):
-        """ Set the plc memory address. mTag: (str)memory tag, val:(int) 0/1
+        """ Set the plc memory address. mTag: (str)memory tag, val:(int) 0/1"""
+        modbusMsg = TID + PROTOCOL_ID + W_LENGTH + UID + M_FC + \
+            MEM_ADDR[mTag] + BIT_COUNT + BYTE_COUNT + VALUES[str(val)]
+        response = self._getRespStr(modbusMsg)
+        return str(response)
+
+#-----------------------------------------------------------------------------
+    def _getRespStr(self, modbusMsg):
+        """ Convert the sendStr to hex byte and send to PLC. Wait for PLC's 
+            response and convert the response hex bytes to string.
         """
-        modbus_payload = TID + PROTOCOL_ID + LENGTH + UID + M_FC + MEM_ADDR[mTag] + BIT_COUNT + BYTE_COUNT + VALUES[str(val)]
-        print(modbus_payload)
-        # print modbus_payload
-        #self.plcAgent.send(modbus_payload.decode('hex'))
-        #modbus_payload = "".join(
-        #    (TID, PROTOCOL_ID, LENGTH, UID, M_FC, mTag, BIT_COUNT, BYTE_COUNT, str(val)))
-        #self.plcAgent.send(modbus_payload.decode('hex'))
-        bdata = bytes.fromhex(modbus_payload)
+        if not (self.connected and modbusMsg): return ''  # check whether the input is empty.
+        if self.debug: print('M221 send: %s' % modbusMsg)
+        bdata = bytes.fromhex(modbusMsg)
         self.plcAgent.send(bdata)
+        respBytes = self.plcAgent.recv(BUFF_SZ)
+        respStr = respBytes.dencode('hex') if DECODE_MD else respBytes.hex()
+        return respStr
 
-        #response = self.plcAgent.recv(1024).dencode('hex')
-        response = self.plcAgent.recv(1024).hex()
-        print(response)
-
+#-----------------------------------------------------------------------------
     def disconnect(self):
         """ Disconnect from PLC."""
         print("M221:    Disconnect from PLC.")
         self.plcAgent.close()
 
 #-----------------------------------------------------------------------------
-def testCase():
-    plc = M221('192.168.10.71')
-    plc.redMem()
-    #plc.writeMem('M10', 0)
-    plc.disconnect()
-	
+def testCase(mode):
+    """ Module testCase function."""
+    if mode == 0:
+        plc = M221('192.168.10.71', debug=True)
+        plc.readMem()
+        plc.writeMem('M10', 0)
+        plc.disconnect()
+    elif mode == 1:
+        plc = M221('192.168.10.72', debug=True)
+        plc.readMem()
+        plc.writeMem('M10', 0)
+        plc.disconnect()
+    else:
+        # Add more test case here and use <mode> flag to select.
+        pass
+
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
-    testCase()
+    testCase(0)
