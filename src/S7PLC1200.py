@@ -2,7 +2,7 @@
 #-----------------------------------------------------------------------------
 # Name:           S7PLC1200.py
 #
-# Purpose:        This module is used to connect the siemens s7-1200 PLC. This
+# Purpose:       This module is used to connect to the siemens s7-1200 PLC. This
 #                moduel was improved based on the project:
 #                http://simplyautomationized.blogspot.com/2014/12/raspberry-pi-getting-data-from-s7-1200.html
 #
@@ -12,10 +12,9 @@
 # Copyright:   NUS Singtel Cyber Security Research & Development Laboratory
 # License:     YC @ NUS
 #-----------------------------------------------------------------------------
-from time import sleep
+import time
 import snap7
 from snap7.util import *
-import struct
 
 # Set the output type
 OUT_BOOL = 1
@@ -30,15 +29,21 @@ class S7PLC1200(object):
     def __init__(self, ip, debug=False):
         self.ip = ip
         self.debug = debug
+        self.connected = False
+        self.memAreaDict = {'m': 0x83, 'q': 0x82, 'i': 0x81} # memory access dict.
         self.plc = snap7.client.Client()
-        self.plc.connect(ip, 0, 1)  # connect to the PLC
-        self.memAreaDict = {'m': 0x83, 'q': 0x82, 'i': 0x81}
+        try:
+            self.plc.connect(ip, 0, 1)  # connect to the PLC
+            self.connected = True
+        except snap7.snap7exceptions.Snap7Exception as error:
+            print('S7PLC1200 ERROR: %s' %error)
 
 #-----------------------------------------------------------------------------
     def getMem(self, mem, returnByte=False):
         """ Get the PLC state from related memeory address: IX0.N-input, QX0.N-output, 
             MX0.N-memory
         """
+        if not self.connected: return None
         out = None  # output functino selection type
         start = 0  # start position idx
         bit = 0
@@ -82,6 +87,7 @@ class S7PLC1200(object):
         """ Set the PLC state from related memeory address: IX0.N-input, QX0.N-output, 
             MX0.N-memory.
         """
+        if not self.connected: return None
         data = self.getMem(mem, True)
         start = bit = 0  # start position idx
         # get the area memory address
@@ -104,23 +110,27 @@ class S7PLC1200(object):
         return self.plc.write_area(area, 0, start, data)
 
 #-----------------------------------------------------------------------------
+    def disconnect(self):
+        """ Disconnect from PLC."""
+        print("S7PLC1200:    Disconnect from PLC.")
+        self.plc.disconnect()
 
+#-----------------------------------------------------------------------------
 def testCase():
     plc = S7PLC1200('192.168.10.73')  # ,debug=True)
     #turn on outputs cascading
     plc.writeMem('qx0.'+str(3), False)
     plc.writeMem('qx0.'+str(4), False)
-    #for x in range(0, 7):
-    #    plc.writeMem('qx0.'+str(x), True)
-    #    sleep(.5)
-    #sleep(1)
+    for x in range(0, 7):
+        plc.writeMem('qx0.'+str(x), True)
+        time.sleep(0.5)
+    time.sleep(1)
     #turn off outputs
-    #for x in range(0, 7):
-    #    plc.writeMem('qx0.'+str(x), False)
-    #    sleep(.5)
-    plc.plc.disconnect()
+    for x in range(0, 7):
+        plc.writeMem('qx0.'+str(x), False)
+        time.sleep(0.5)
+    plc.disconnect()
 
-	
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
     testCase()
