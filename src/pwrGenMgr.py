@@ -39,7 +39,7 @@ class pwrGenClient(object):
         self.parent = parent
         self.loadNum = 0
         self.debug = debug  # debug mode flag.
-        # try to connect to the arduino by serial port.      
+        # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         # try to connect to the PLCs.
         self.plc1 = m221.M221(PLC1_IP)
@@ -120,39 +120,8 @@ class pwrGenClient(object):
         return respStr
 
 #--------------------------------------------------------------------------
-    def setPumpSpeed(self, val):
-        if TEST_MODE: return
-        # change the plc state to do the action.
-        pSpeedDict = {'off': (0, 0), 'slow': (0, 1), 'fast': (1, 0)}
-        self.plc1.writeMem('M4', pSpeedDict[val][0])
-        time.sleep(0.01) # need we sleep a shot while for plc to response?
-        self.plc1.writeMem('M5', pSpeedDict[val][1])
-
-#--------------------------------------------------------------------------
-    def setMotoSpeed(self, val):
-        if TEST_MODE: return
-        # change the plc state to do the action.
-        mSpeedDict = {'off': (False, False), 'slow': (False, True), 'fast': (True, False)}
-        self.plc2.writeMem('qx0.3', mSpeedDict[val][0])
-        time.sleep(0.01) # need we sleep a shot while for plc to response?
-        self.plc2.writeMem('qx0.4', mSpeedDict[val][1])
-
-#--------------------------------------------------------------------------
-    def setSensorPwr(self, val):
-        if TEST_MODE: return
-        parm = 1 if val=='on' else 0
-        self.plc3.writeMem('M4', parm)
-        self.plc3.writeMem('M5', parm)
-
-#--------------------------------------------------------------------------
-    def setMainPwr(self, val):
-        if TEST_MODE: return
-        parm = 1 if val=='on' else 0
-        self.plc3.writeMem('M6', parm)
-
-#--------------------------------------------------------------------------
     def getLoadState(self):
-        """"Connect to PLC to get the current load state."""
+        """" Connect to PLC to get the current load state. <m221_plc_modbus.txt>"""
         loadDict = {'Indu': 0,      # Industry area
                     'Airp': 0,      # Air port
                     'Resi': 0,      # Residential area
@@ -160,45 +129,86 @@ class pwrGenClient(object):
                     'TrkA': 0,      # Track A power
                     'TrkB': 0,      # Track B power
                     'City': 0,      # City power
-                }
-
+                    }
         # get the PLC 1 state:
         s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
         loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
         loadDict['Airp'] = 1 if s1resp[2] == '04' else 0
-
         # get PLC 2 state:
         loadDict['Resi'] = 1 if self.plc2.getMem('qx0.2', True) else 0
         loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0', True) else 0
-
         # get PLC 3 state
         s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
         loadDict['TrkA'] = 1 if s3resp[2] == '04' else 0
         loadDict['TrkB'] = 1 if s3resp[3] == '10' else 0
         loadDict['City'] = 1 if s3resp[8] == '00' else 0
-        self.stateMgr.updateLoadPlcState(loadDict)            
+        self.stateMgr.updateLoadPlcState(loadDict)       
+
+#--------------------------------------------------------------------------
+    def setMainPwr(self, val):
+        """ Set the system main power PLC3[M6]. 0-off, 1-on."""
+        if not self.plc3.connected:
+            if self.debug: print('PLC3 not connected, can not set system main power.')
+            return
+        parm = 1 if val == 'on' else 0
+        self.plc3.writeMem('M6', parm)
+
+#--------------------------------------------------------------------------
+    def setMotoSpeed(self, val):
+        """ Set generator pump speed plc2 [Q3, Q3]. FF-off, FT-low, TF-high."""
+        # change the plc state to do the action.
+        if not self.plc2.connected:
+            if self.debug: print('PLC2 not connected, can not set Moto speed.')
+            return
+        mSpeedDict = {'off': (False, False), 'low': (False, True), 'high': (True, False)}
+        self.plc2.writeMem('qx0.3', mSpeedDict[val][0])
+        time.sleep(0.01) # need we sleep a shot while for plc to response?
+        self.plc2.writeMem('qx0.4', mSpeedDict[val][1])
+
+#--------------------------------------------------------------------------
+    def setPumpSpeed(self, val):
+        """ Set generator pump speed plc1 [M4, M5]. 00-off, 01-low, 10-high."""
+        if not self.plc1.connected:
+            if self.debug: print('PLC1 not connected, can not set pump speed.')
+            return
+        # change the plc state to do the action.
+        pSpeedDict = {'off': (0, 0), 'low': (0, 1), 'high': (1, 0)}
+        self.plc1.writeMem('M4', pSpeedDict[val][0])
+        time.sleep(0.01) # need we sleep a shot while for plc to response?
+        self.plc1.writeMem('M5', pSpeedDict[val][1])
+
+#--------------------------------------------------------------------------
+    def setSensorPwr(self, val):
+        """ Set all track sensor's power PLC3 [M4, M5]. 00-off, 11-on."""
+        if not self.plc3.connected:
+            if self.debug: print('PLC3 not connected, can not set all sensor power.')
+            return
+        parm = 1 if val == 'on' else 0
+        self.plc3.writeMem('M4', parm)
+        self.plc3.writeMem('M5', parm)
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class stateManager(object):
-    """ save the current system state.""" 
+    """ Manager module to save the current system state.""" 
     def __init__(self):
-        # Serial cmd str sequence. 
+        # Serial cmd str sequence.
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
-        self.genDict = {    'Freq': '10.20',     # frequence (dd.dd)
-                            'Volt': '10.30',     # voltage (dd.dd)
+        # Generator state dictionary.
+        self.genDict = {    'Freq': '00.00',    # frequence (dd.dd)
+                            'Volt': '00.00',    # voltage (dd.dd)
                             'Fled': 'green',    # frequence led (green/amber/off)
                             'Vled': 'green',    # voltage led (green/amber/off)
-                            'Mled': 'amber',    # motor led (green/amber/off)
+                            'Mled': 'green',    # motor led (green/amber/off)
                             'Pled': 'green',    # pump led (green/amber/off)
                             'Smok': 'off',      # smoke indicator (fast/slow/off)
-                            'Pspd': 'low',      # pump speed (high/low/off)
-                            'Mspd': 'low',      # moto speed (high/low/off)
+                            'Pspd': 'off',      # pump speed (high/low/off)
+                            'Mspd': 'off',      # moto speed (high/low/off)
                             'Sirn': 'off',      # siren (on/off)
                             'Spwr': 'off',      # sensor power (on/off)
                             'Mpwr': 'on'        # main power (on/off)
                         }
-
+        # Power load state dictionary. 
         self.loadDict = {   'Indu': 0,      # Industry area
                             'Airp': 1,      # Air port
                             'Resi': 0,      # Residential area
@@ -210,22 +220,25 @@ class stateManager(object):
 
 #--------------------------------------------------------------------------
     def getGenInfo(self):
+        """ Return the generator state json string."""
         return json.dumps(self.genDict)
 
 #--------------------------------------------------------------------------
     def getLoadInfo(self):
+        """ Return the power load state json string."""
         return json.dumps(self.loadDict)
 
 #--------------------------------------------------------------------------
     def getLoadNum(self):
-        """return the number of loads"""
+        """ Return the number of loads """
         return sum(self.loadDict.value())
 
 #--------------------------------------------------------------------------
     def updateGenSerState(self, changeDict):
-        """ passed in the changeDict and the function will return a 
+        """ Passed in the changeDict and the function will return the Ardurino
+            control string.
         """
-        # first time inti setting.
+        # first time init setting.
         if changeDict is None:
             return ':'.join([self.genDict[keyStr] for keyStr in self.serialSqu])
         valList = []
@@ -239,18 +252,20 @@ class stateManager(object):
 
 #--------------------------------------------------------------------------
     def updateGenPlcState(self, changeDict):
+        """ Update the generator PLC state."""
         for keyStr in changeDict.keys():
             self.genDict[keyStr] = changeDict[keyStr]
 
 #--------------------------------------------------------------------------
     def updateLoadPlcState(self, changeDict):
+        """ Update the load PLc state. """
         for keyStr in changeDict.keys():
             self.loadDict[keyStr] = changeDict[keyStr]
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 
 def testCase():
-    client = pwrGenClient(None)
+    client = pwrGenClient(None, debug=True)
     client.mainLoop()
 
 #-----------------------------------------------------------------------------

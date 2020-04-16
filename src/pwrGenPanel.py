@@ -111,7 +111,7 @@ class PanelPump(wx.Panel):
         self.bmp = wx.Bitmap(gv.PUIMG_PATH, wx.BITMAP_TYPE_ANY)
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
-        self.maxVal = 50    # max pump line hight
+        self.maxVal = 80    # max pump line hight
         self.pos = 80       # pump line position (from top to buttom)
         self.pumpSpd = 'off'
 
