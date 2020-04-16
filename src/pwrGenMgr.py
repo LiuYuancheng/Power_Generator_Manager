@@ -2,7 +2,7 @@
 #-----------------------------------------------------------------------------
 # Name:        pwrGenMgr.py
 #
-# Purpose:     power generator auto-control manager. 
+# Purpose:     Power generator auto-control manager.
 #              GUI -> UDP -> controler-> ModeBus TCP-> PLC               
 #                               +-> Serial Comm-> Power station Arduino
 # Author:       Yuancheng Liu
@@ -11,128 +11,112 @@
 # Copyright:   YC @ Singtel Cyber Security Research & Development Laboratory
 # License:     YC
 #--------------------------------------------------------------------------
-import os, sys
+
 import time
-import glob
 import json
 import re
-import serial
-import threading
 
 import udpCom
 import serialCom
 import M2PLC221 as m221
 import S7PLC1200 as s71200
 
-PERIOD = 1  # update frequency
 UDP_PORT = 5005
-TEST_MODE = True
+TEST_MODE = True    # Local test mode flag.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
-PLC3_IP = '192.168.10.73'
+PLC3_IP = '192.168.10.71'
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class pwrGenClient(object):
     """ Client program running on Raspberry PI or nomral computer to connect
-        to PLC and Arduino.
+        to PLC and Arduino. A UDP echo server will also be inited to response
+        the UI control's request. 
     """
-    def __init__(self, parent):
+    def __init__(self, parent, debug=False):
+        # Set the load number.
+        self.parent = parent
+        self.loadNum = 0
+        self.debug = debug  # debug mode flag.
         # try to connect to the arduino by serial port.      
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
-        print("Arduino connection : %s" %str(self.serialComm.connected))
         # try to connect to the PLCs.
-        self.plc1 = self.plc2 = self.plc3 = None
-        if not TEST_MODE:
-            try:
-                self.plc1 = m221.M221(PLC1_IP)
-            except:
-                self.plc1 = None
-            finally:
-                result = 'connected' if self.plc1 else 'not response'
-                print('PLC 1 [%s] : %s' %(PLC1_IP, result))
-            try:
-                self.plc2 = s71200.S7PLC1200(PLC2_IP)
-            except:
-                self.plc2 = None
-            finally:
-                result = 'connected' if self.plc2 else 'not response'
-                print('PLC 2 [%s] : %s' %(PLC1_IP, result))
-
-            try:
-                self.plc3 = m221.M221(PLC3_IP)
-            except:
-                self.plc3 = None
-            finally:
-                result = 'connected' if self.plc3 else 'not response'
-                print('PLC 3 [%s] : %s' %(PLC1_IP, result))
-        
-        # Set the load number.
-        self.loadNum = 0 
+        self.plc1 = m221.M221(PLC1_IP)
+        self.plc2 = s71200.S7PLC1200(PLC2_IP)
+        self.plc3 = m221.M221(PLC3_IP)
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
         # Init the state manager.
         self.stateMgr = stateManager()
-        print("Init finished!")
+        print('Init finished [Test mode:%s], connection state :\n' %str(TEST_MODE))
+        print('Arduino connection : %s' %str(self.serialComm.connected))
+        print('PLC 1 [%s] connection: %s' %(PLC1_IP, self.plc1.connected))
+        print('PLC 2 [%s] connection: %s' %(PLC2_IP, self.plc2.connected))
+        print('PLC 3 [%s] connection: %s' %(PLC3_IP, self.plc3.connected))
 
 #--------------------------------------------------------------------------
     def mainLoop(self):
+        """ Controler request handling loop.
+        """
+        print("UDP echo-server main loop start")
         self.server.serverStart(handler=self.msgHandler)
+        print("UDP echo-server main loop end")
 
 #--------------------------------------------------------------------------
     def msgHandler(self, msg):
-        """ The test handler method passed into the UDP server to handle the 
-            incoming messages.
+        """ Generator request message handler function.
             incomming message sample:
-            msg = {
-                'Cmd': str(***),
-                'Parm': 
-            }
+            msg = { 'Cmd': str(***),
+                    'Parm': {}}
         """
-        print("Incomming message: %s" %str(msg))
-        respStr = json.dumps({'Cmd':'Set', 'Param': 'Done'})
+        if self.debug: print("Incomming message: %s" %str(msg))
+        respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         msgDict = json.loads(msg.decode('utf-8'))
         if msgDict['Cmd'] == 'Get':
+            # state get request.
             if msgDict['Parm'] == 'Con':
-                #
-                if TEST_MODE:
-                    self.serialComm.connected = self.plc1 = self.plc2 = self.plc3= True
-
-                fbDict = { 'Serial': self.serialComm.connected,
-                        'Plc1': not (self.plc1 is None),
-                        'Plc2': not (self.plc2 is None),
-                        'Plc3': not (self.plc2 is None)
-                }
+                # connection state fetch request.
+                fbDict = {'Serial': self.serialComm.connected,
+                          'Plc1': self.plc1.connected,
+                          'Plc2': self.plc2.connected,
+                          'Plc3': self.plc3.connected
+                          }
                 respStr = json.dumps(fbDict)
             elif msgDict['Parm'] == 'Gen':
+                # Generator's Ardurino controller state.
                 respStr = self.stateMgr.getGenInfo()
-            else:
-                if not TEST_MODE:
-                    self.getLoadState()
+            elif msgDict['Parm'] == 'Load':
+                if not TEST_MODE: self.getLoadState()
                 respStr = self.stateMgr.getLoadInfo()
+            else:
+                print('msgHandler : can not handle the un-expect cmd: %s' %str(msgDict['Parm']))
         elif msgDict['Cmd'] == 'SetGen':
+            # Generator set request.
             msgStr = self.stateMgr.updateGenSerState(msgDict['Parm'])
+            # Send the control cmd to COMM if not under test mode.
             if self.serialComm.connected and (not TEST_MODE):
-                print('Write message <%s> to Ardurino' %msgStr)
+                if self.debug: print('Write message <%s> to Ardurino' %msgStr)
                 self.serialComm.write(msgStr.encode('utf-8'))
             respStr = self.stateMgr.getGenInfo()
-
         elif msgDict['Cmd'] == 'SetPLC':
-            # update the related plc
+            # PLC  set request.
+            # Main power
             if 'Mpwr' in msgDict['Parm'].keys():
                 self.setMainPwr(msgDict['Parm']['Mpwr'])
-            
+            # TrackA and B all sensor power
             if 'Spwr' in msgDict['Parm'].keys():
                 self.setSensorPwr(msgDict['Parm']['Spwr'])
-
+            # Pump speed.
             if 'Pspd' in msgDict['Parm'].keys():
-                self.setPumpSpeed(msgDict['Parm']['Pspd']) 
-
+                self.setPumpSpeed(msgDict['Parm']['Pspd'])
+            # Moto speed.
             if 'Mspd' in msgDict['Parm'].keys():
                 self.setMotoSpeed(msgDict['Parm']['Pspd'])
-            # updaste the state manager
+            # Updaste the state manager
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
             respStr = self.stateMgr.getGenInfo()
+        # Send back the response string.
         return respStr
 
 #--------------------------------------------------------------------------
@@ -179,7 +163,7 @@ class pwrGenClient(object):
                 }
 
         # get the PLC 1 state:
-        s1resp = re.findall('..', str(self.plc1.redMem())[-16:])
+        s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
         loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
         loadDict['Airp'] = 1 if s1resp[2] == '04' else 0
 
@@ -188,7 +172,7 @@ class pwrGenClient(object):
         loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0', True) else 0
 
         # get PLC 3 state
-        s3resp = re.findall('..', str(self.plc3.redMem())[-16:])
+        s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
         loadDict['TrkA'] = 1 if s3resp[2] == '04' else 0
         loadDict['TrkB'] = 1 if s3resp[3] == '10' else 0
         loadDict['City'] = 1 if s3resp[8] == '00' else 0

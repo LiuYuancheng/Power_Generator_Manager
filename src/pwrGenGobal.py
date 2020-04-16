@@ -18,15 +18,14 @@ APP_NAME = 'Generator Mgr'
 
 #------<IMAGES PATH>-------------------------------------------------------------
 IMG_FD = 'img'
-ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico")
-MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png")
-PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")
+ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico") # App Icon.
+MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png") # moto speed background image
+PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")  # pump speed background image
 
 #-------<GLOBAL PARAMTERS>-----------------------------------------------------
+iCtrlPanel = None   # Control panel
+iDetailPanel = None # Debug and manually control panel.
 iMainFrame = None   # MainFrame.
-iMotoImgPnl = None  # Image panel.
-iPumpImgPnl = None
-iCtrlPanel = None   # control panel
-iDetailPanel = None
-iUpdateRate = 0.5     # main frame update rate 1 sec.
-iGnMgr = None
+iMotoImgPnl = None  # Moto speed image panel.
+iPumpImgPnl = None  # Pump image speed panel.
+iUpdateRate = 0.5   # main frame update rate 1 sec.
