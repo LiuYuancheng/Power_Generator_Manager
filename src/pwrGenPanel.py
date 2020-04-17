@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #-----------------------------------------------------------------------------
-# Name:        uiPanel.py
+# Name:        pwrGenPanel.py
 #
 # Purpose:     This module is used to create different function panels.
 # Author:      Yuancheng Liu

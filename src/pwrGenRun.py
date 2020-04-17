@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #-----------------------------------------------------------------------------
-# Name:        uiRun.py
+# Name:        pwGenRun.py
 #
 # Purpose:     This module is used to create the control panel to connect to the
 #              Raspberry PI generator control by UDP.
