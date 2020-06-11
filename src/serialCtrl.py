@@ -57,17 +57,17 @@ class UIFrame(wx.Frame):
                 pass
         print(('COM connection: the serial port can be used :%s' % str(portList)))
 
-        self.serialPort = portList[-1]
+        #self.serialPort = portList[0]
 
         try:
             self.serComm = serial.Serial(self.serialPort, 115200, 8, 'N', 1, timeout=1)
         except:
             print("Serial connection: serial port open error.")
-            return None
+            #return None
         # connect to the PLC
-        self.se1 = m221.M221('192.168.10.72')
-        self.se2 = s71200.S7PLC1200('192.168.10.73')
-        self.se3 = m221.M221('192.168.10.71')
+        #self.se1 = m221.M221('192.168.10.72')
+        #self.se2 = s71200.S7PLC1200('192.168.10.73')
+        #self.se3 = m221.M221('192.168.10.71')
 
 
 
