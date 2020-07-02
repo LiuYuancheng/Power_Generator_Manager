@@ -22,7 +22,7 @@ import M2PLC221 as m221
 import S7PLC1200 as s71200
 
 UDP_PORT = 5005
-TEST_MODE = True    # Local test mode flag.
+TEST_MODE = False    # Local test mode flag.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
@@ -132,16 +132,19 @@ class pwrGenClient(object):
                     }
         # get the PLC 1 state:
         s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
+        print(">>" + str(s1resp))
         loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
-        loadDict['Airp'] = 1 if s1resp[2] == '04' else 0
+        loadDict['Airp'] = 1 if s1resp[1] == '04' else 0
         # get PLC 2 state:
-        loadDict['Resi'] = 1 if self.plc2.getMem('qx0.2', True) else 0
-        loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0', True) else 0
+        loadDict['Resi'] = 0 if self.plc2.getMem('qx0.2') else 1
+        loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0') else 0
         # get PLC 3 state
         s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
-        loadDict['TrkA'] = 1 if s3resp[2] == '04' else 0
-        loadDict['TrkB'] = 1 if s3resp[3] == '10' else 0
-        loadDict['City'] = 1 if s3resp[8] == '00' else 0
+        #print(">>" + str(s3resp))
+        loadDict['TrkA'] = 1 if s3resp[1] == '04' else 0
+        loadDict['TrkB'] = 1 if s3resp[2] == '10' else 0
+        loadDict['City'] = 1 if s3resp[7] == '00' else 0
+
         self.stateMgr.updateLoadPlcState(loadDict)       
 
 #--------------------------------------------------------------------------
