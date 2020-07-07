@@ -69,8 +69,6 @@ class UIFrame(wx.Frame):
         self.se2 = s71200.S7PLC1200('192.168.10.73')
         self.se3 = m221.M221('192.168.10.71')
 
-
-
         self.SetSizer(self._buidUISizer())
         self.statusbar = self.CreateStatusBar()
         self.Bind(wx.EVT_TIMER, self.periodic)
@@ -141,20 +139,16 @@ class UIFrame(wx.Frame):
         self.MotoSP.SetSelection(0)
         gs.Add(self.MotoSP, flag=flagsR, border=2)
 
-
         gs.Add(wx.StaticText(self, label=' All sensor control : '), flag=flagsR, border=2)
         self.senPower= wx.ComboBox(self, -1, choices=['on', 'off'])
         self.senPower.SetSelection(0)
         gs.Add(self.senPower, flag=flagsR, border=2)
-
 
         gs.Add(wx.StaticText(self, label=' All power control : '), flag=flagsR, border=2)
         self.AllPower= wx.ComboBox(self, -1, choices=['on', 'off'])
         self.AllPower.SetSelection(0)
         gs.Add(self.AllPower, flag=flagsR, border=2)
         gs.AddSpacer(5)
-
-
 
         self.sendBt = wx.Button(self, label='Set')
         self.sendBt.Bind(wx.EVT_BUTTON, self.onSend)

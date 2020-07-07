@@ -47,6 +47,10 @@ class pwrGenClient(object):
         self.plc3 = m221.M221(PLC3_IP)
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
+        # init the plat form state:
+        if self.serialComm:
+            msgStr = "50.00:11.00:green:green:green:green:slow:off"
+            self.serialComm.write(msgStr.encode('utf-8'))
         # Init the state manager.
         self.stateMgr = stateManager()
         print('Init finished [Test mode:%s], connection state :\n' %str(TEST_MODE))
