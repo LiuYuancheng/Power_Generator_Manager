@@ -23,8 +23,8 @@ import pwrGenPanel as pl
 
 UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
-TEST_MD = True
-RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.245'
+TEST_MD = False
+RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
