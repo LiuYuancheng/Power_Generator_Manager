@@ -1,7 +1,7 @@
 import wx
 import time
 import json
-from wx.adv import Animation, AnimationCtrl
+#from wx.adv import Animation, AnimationCtrl
 import wx.gizmos as gizmos
 import pwrGenGobal as gv
 import udpCom
@@ -9,7 +9,7 @@ import udpCom
 
 UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
-TEST_MD = True
+TEST_MD = False
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 
@@ -70,9 +70,7 @@ class pwrGenLDisplay(wx.Frame):
     def __init__(self, parent, width, height):
         wx.Frame.__init__(self, parent, title="pwrGenLDisplay",style=wx.MINIMIZE_BOX, size=(width, height))
         self.SetBackgroundColour(wx.Colour('BLACK'))
-
         # build the UI.
-        
         self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
         self.lastPeriodicTime = { 'UI':time.time(), 'Data':time.time()}
         self.timer = wx.Timer(self)
@@ -80,12 +78,15 @@ class pwrGenLDisplay(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
         self.SetSizer(self._buildGenInfoSizer())
+
+        self.connectRsp('Login')
         self.alphaValue = 128
         self.SetTransparent(self.alphaValue)
         self.Layout()
         self.SetPosition((800, 600))
         self.Refresh(False)
         self.Show(True)
+        print("----")
 
 
     def _buildGenInfoSizer(self):
@@ -151,13 +152,13 @@ class pwrGenLDisplay(wx.Frame):
                 self.volLedBt.SetBackgroundColour(
                     wx.Colour(colorDict[resultDict['Vled']]))
             # motor led light.
-            if 'Mled' in resultDict.keys():
-                self.MotoLedBt.SetBackgroundColour(
-                    wx.Colour(colorDict[resultDict['Mled']]))
+            #if 'Mled' in resultDict.keys():
+            #    self.MotoLedBt.SetBackgroundColour(
+            #        wx.Colour(colorDict[resultDict['Mled']]))
             # pump led light.
-            if 'Pled' in resultDict.keys():
-                self.pumpLedBt.SetBackgroundColour(
-                    wx.Colour(colorDict[resultDict['Pled']]))
+            #if 'Pled' in resultDict.keys():
+            #    self.pumpLedBt.SetBackgroundColour(
+            #        wx.Colour(colorDict[resultDict['Pled']]))
             # smoke indicator.
             if 'Smok' in resultDict.keys():
                 lb = 'Smoke [OFF]'if resultDict['Smok'] == 'off' else 'Smoke [ON ]'
@@ -191,7 +192,7 @@ class pwrGenLDisplay(wx.Frame):
             # Log in and get the connection state.
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
             result = self.connector.sendMsg(msgStr, resp=True)
-            self.setConnLED(result)
+            #self.setConnLED(result)
         elif evnt == 'Load':
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Load'})
             result = self.connector.sendMsg(msgStr, resp=True)
@@ -220,7 +221,7 @@ class TrojanAttFrame(wx.Frame):
         the trojan attack.
     """
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title="TrojanAttFrame",style=wx.MINIMIZE_BOX)
+        wx.Frame.__init__(self, parent, title="TrojanAttFrame",style=wx.MINIMIZE_BOX|wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
         self.alphaValue = 255   # transparent control
         self.alphaIncrement = -4

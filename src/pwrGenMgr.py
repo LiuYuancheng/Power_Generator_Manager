@@ -202,8 +202,8 @@ class stateManager(object):
         # Serial cmd str sequence.
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
         # Generator state dictionary.
-        self.genDict = {    'Freq': '00.00',    # frequence (dd.dd)
-                            'Volt': '00.00',    # voltage (dd.dd)
+        self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
+                            'Volt': '11.00',    # voltage (dd.dd)
                             'Fled': 'green',    # frequence led (green/amber/off)
                             'Vled': 'green',    # voltage led (green/amber/off)
                             'Mled': 'green',    # motor led (green/amber/off)
