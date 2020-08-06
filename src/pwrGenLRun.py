@@ -1,5 +1,17 @@
 import wx
+import time
+import json
 from wx.adv import Animation, AnimationCtrl
+import wx.gizmos as gizmos
+import pwrGenGobal as gv
+import udpCom
+
+
+UDP_PORT = 5005
+PERIODIC = 250  # main UI loop call back period.(ms)
+TEST_MD = True
+RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
+
 
 class FancyFrame(wx.Frame):
     def __init__(self, width, height):
@@ -25,7 +37,7 @@ class FancyFrame(wx.Frame):
         
         main_sizer.Add(self.panel,proportion=1, flag=wx.EXPAND)
         self.SetSizer(main_sizer)
-
+        
         self.SetShape(wx.Region(b))
         self.Centre()
         self.Show(True)
@@ -49,6 +61,156 @@ class MainPanel(wx.Panel):
         button_sizer.Add((-1, -1), proportion=1)
         button_sizer.Add(cmd_cancel)
         return button_sizer
+
+
+class pwrGenLDisplay(wx.Frame):
+    """ Popup frame to show a transparent window to block the desktop to simulate
+        the trojan attack.
+    """
+    def __init__(self, parent, width, height):
+        wx.Frame.__init__(self, parent, title="pwrGenLDisplay",style=wx.MINIMIZE_BOX, size=(width, height))
+        self.SetBackgroundColour(wx.Colour('BLACK'))
+
+        # build the UI.
+        
+        self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
+        self.lastPeriodicTime = { 'UI':time.time(), 'Data':time.time()}
+        self.timer = wx.Timer(self)
+        self.updateLock = False
+        self.Bind(wx.EVT_TIMER, self.periodic)
+        self.timer.Start(PERIODIC)  # every 500 ms
+        self.SetSizer(self._buildGenInfoSizer())
+        self.alphaValue = 128
+        self.SetTransparent(self.alphaValue)
+        self.Layout()
+        self.SetPosition((800, 600))
+        self.Refresh(False)
+        self.Show(True)
+
+
+    def _buildGenInfoSizer(self):
+        """ Build the generator information display panel."""
+        # LED area
+        uSizer = wx.BoxSizer(wx.HORIZONTAL)
+        flagsR = wx.RIGHT
+        # Frequence LED
+        self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 35))
+        self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.feqLedBt, flag=flagsR, border=2)
+        self.feqLedDis = gizmos.LEDNumberCtrl(
+            self, -1, size=(80, 35), style=gizmos.LED_ALIGN_CENTER)
+        uSizer.Add(self.feqLedDis, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Voltage LED
+        self.volLedBt = wx.Button(self, label='Voltage', size=(80, 35))
+        self.volLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.volLedBt, flag=flagsR, border=2)
+
+        self.volLedDis = gizmos.LEDNumberCtrl(
+            self, -1, size=(80, 35), style=gizmos.LED_ALIGN_CENTER)
+        uSizer.Add(self.volLedDis, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Smoke LED
+        self.smkIdc = wx.Button(
+            self, label='Smoke [OFF]', size=(100, 35), name='smoke')
+        self.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.smkIdc, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+        # Siren LED
+        self.sirenIdc = wx.Button(
+            self, label='Siren [OFF]', size=(100, 35), name='smoke')
+        self.sirenIdc.SetBackgroundColour(wx.Colour('GRAY'))
+        uSizer.Add(self.sirenIdc, flag=flagsR, border=2)
+        uSizer.AddSpacer(10)
+
+        return uSizer
+
+
+#-----------------------------------------------------------------------------
+    def SetGensLED(self, resultStr):
+        """ Set all the generator's LED and indiator's state."""
+        if resultStr is None:
+            print("SetGensLED: no response")
+        else:
+            #print(resultStr)
+            colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
+                         'on': 'Green', 'off': 'Gray', 'slow': 'Yellow', 'fast': 'Red'}
+            resultDict = json.loads(resultStr)
+            # frequence number display.
+            if 'Freq' in resultDict.keys():
+                self.feqLedDis.SetValue(str(resultDict['Freq']))
+            # frequence led light.
+            if 'Fled' in resultDict.keys():
+                self.feqLedBt.SetBackgroundColour(
+                    wx.Colour(colorDict[resultDict['Fled']]))
+            # voltage number display.
+            if 'Volt' in resultDict.keys():
+                self.volLedDis.SetValue(str(resultDict['Volt']))
+            # voltage led light.
+            if 'Vled' in resultDict.keys():
+                self.volLedBt.SetBackgroundColour(
+                    wx.Colour(colorDict[resultDict['Vled']]))
+            # motor led light.
+            if 'Mled' in resultDict.keys():
+                self.MotoLedBt.SetBackgroundColour(
+                    wx.Colour(colorDict[resultDict['Mled']]))
+            # pump led light.
+            if 'Pled' in resultDict.keys():
+                self.pumpLedBt.SetBackgroundColour(
+                    wx.Colour(colorDict[resultDict['Pled']]))
+            # smoke indicator.
+            if 'Smok' in resultDict.keys():
+                lb = 'Smoke [OFF]'if resultDict['Smok'] == 'off' else 'Smoke [ON ]'
+                self.smkIdc.SetLabel(lb)
+                self.smkIdc.SetBackgroundColour(
+                    wx.Colour(colorDict[resultDict['Smok']]))
+            # siren indicator.
+            if 'Sirn' in resultDict.keys():
+                (lb, cl) = ('Siren [ON ]', 'Red') if resultDict['Sirn'] == 'on' else (
+                    'Siren [OFF]', 'Gray')
+                self.sirenIdc.SetLabel(lb)
+                self.sirenIdc.SetBackgroundColour(wx.Colour(cl))
+            self.Refresh(False)
+
+
+#--AppFrame---------------------------------------------------------------------
+    def periodic(self, event):
+        """ Call back every periodic time."""
+        now = time.time()
+        if not self.updateLock:
+            if now - self.lastPeriodicTime['Data'] >= 2*gv.iUpdateRate:
+                self.lastPeriodicTime['Data'] = now
+                self.connectRsp('Gen')
+
+#-----------------------------------------------------------------------------
+    def connectRsp(self, evnt, parm=None):
+        """ Try to connect to the raspberry pi and send cmd based on the 
+            evnt setting.
+        """
+        if evnt == 'Login':
+            # Log in and get the connection state.
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.setConnLED(result)
+        elif evnt == 'Load':
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Load'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.setLoadsLED(result)
+        elif evnt == 'Gen':
+            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Gen'})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLED(result)
+        elif evnt == 'SetGen':
+            msgStr = json.dumps({'Cmd': 'SetGen', 'Parm': parm})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLED(result)
+        elif evnt == 'SetPLC':
+            msgStr = json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
+            result = self.connector.sendMsg(msgStr, resp=True)
+            self.SetGensLED(result)
+        else:
+            self.statusbar.SetStatusText("Can not handle the user action: %s" %str(evnt))
+
 
 
 #-----------------------------------------------------------------------------
@@ -82,7 +244,7 @@ class TrojanAttFrame(wx.Frame):
         #self.ctrl = AnimationCtrl(self, -1, Animation("img\\motor.png"))
         #self.ctrl.Play()
         #sizer.Add(self.ctrl, flag=wx.ALIGN_CENTER_VERTICAL |
-        #          wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        #          wx.CENTER, border=2)
         self.stTxt = wx.StaticText(
             self, -1, "Your computer has been took over by YC's Trojan, we will release control in 10 sec")
         self.stTxt.SetBackgroundColour(wx.Colour('GREEN'))
@@ -127,6 +289,7 @@ class TrojanAttFrame(wx.Frame):
 
 if __name__ == "__main__":
     app = wx.App()
-    f = TrojanAttFrame(None)
+    #f = TrojanAttFrame(None)
+    f = pwrGenLDisplay(None, 600, 100)
     #f = FancyFrame(300, 300)
     app.MainLoop()

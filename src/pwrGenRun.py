@@ -36,7 +36,9 @@ class AppFrame(wx.Frame):
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         # build the UI.
+        self.alphaValue = 128
         self.SetSizer(self._buildUISizer())
+        self.SetTransparent(self.alphaValue)
         # Set the raspberry pi UDP connector.
         self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
         # Set the periodic call back
@@ -61,7 +63,7 @@ class AppFrame(wx.Frame):
 #--AppFrame---------------------------------------------------------------------
     def _buildUISizer(self):
         """ Build the main UI Sizer. """
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        flagsR = wx.RIGHT
         sizerAll = wx.BoxSizer(wx.VERTICAL)
         # Connection state display area.
         sizerAll.AddSpacer(5)
@@ -95,7 +97,7 @@ class AppFrame(wx.Frame):
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
         self.MotoLedBt = wx.Button(self, label='Moto', size=(80, 30))
         self.MotoLedBt.SetBackgroundColour(wx.Colour('GRAY'))
-        mSizer.Add(self.MotoLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        mSizer.Add(self.MotoLedBt, flag=wx.CENTER, border=2)
         mSizer.AddSpacer(5)
         gv.iMotoImgPnl = pl.PanelMoto(self)
         mSizer.Add(gv.iMotoImgPnl, flag=flagsR, border=2)
@@ -105,7 +107,7 @@ class AppFrame(wx.Frame):
                                  style=wx.LI_VERTICAL), flag=flagsR, border=2)
         mSizer.AddSpacer(5)
         # - add the pump display panel.
-        mSizer.Add(self._buildPumpCtrlSizer(), flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        mSizer.Add(self._buildPumpCtrlSizer(), flag=wx.CENTER, border=2)
         mSizer.AddSpacer(10)
         gv.iPumpImgPnl = pl.PanelPump(self)
         mSizer.Add(gv.iPumpImgPnl, flag=flagsR, border=2)
@@ -133,7 +135,7 @@ class AppFrame(wx.Frame):
         """ build the components connection information display panel"""
         sizer = wx.GridSizer(1, 7, 5, 5)
         sizer.Add(wx.StaticText(self, -1, 'Connection State : '),
-                  flag=wx.RIGHT | wx.ALIGN_CENTER_VERTICAL)
+                  flag=wx.RIGHT)
         sizer.AddSpacer(5)
         # Raspberry PI connection.
         self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
@@ -163,16 +165,16 @@ class AppFrame(wx.Frame):
         vbox = wx.BoxSizer(wx.VERTICAL)
         self.pumpLedBt = wx.Button(self, label='Pump', size=(80, 30))
         self.pumpLedBt.SetBackgroundColour(wx.Colour('GRAY'))
-        vbox.Add(self.pumpLedBt, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        vbox.Add(self.pumpLedBt, flag=wx.CENTER, border=2)
         vbox.AddSpacer(10)
         vbox.Add(wx.StaticText(self, label="PumpSpeed"),
-                 flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+                 flag=wx.CENTER, border=2)
         vbox.AddSpacer(10)
         self.pumpSPCB = wx.ComboBox(
             self, -1, choices=['off', 'low', 'high'], size=(80, 30))
         self.pumpSPCB.SetSelection(0)
         self.pumpSPCB.Bind(wx.EVT_COMBOBOX, self.onPumpSpdChange)
-        vbox.Add(self.pumpSPCB, flag=wx.ALIGN_CENTER_HORIZONTAL, border=2)
+        vbox.Add(self.pumpSPCB, flag=wx.CENTER, border=2)
         return vbox
 
 #-----------------------------------------------------------------------------
@@ -180,7 +182,7 @@ class AppFrame(wx.Frame):
         """ Build the generator information display panel."""
         # LED area
         uSizer = wx.BoxSizer(wx.HORIZONTAL)
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        flagsR = wx.RIGHT
         # Frequence LED
         self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 30))
         self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))

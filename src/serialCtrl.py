@@ -77,7 +77,7 @@ class UIFrame(wx.Frame):
 #--UIFrame---------------------------------------------------------------------
     def _buidUISizer(self):
         """ Build the main UI Sizer. """
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        flagsR = wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
         gs = wx.FlexGridSizer(13, 2, 5, 5)
 

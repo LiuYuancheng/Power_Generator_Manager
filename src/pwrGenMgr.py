@@ -48,7 +48,7 @@ class pwrGenClient(object):
         # Init the UDP server.
         self.server = udpCom.udpServer(None, UDP_PORT)
         # init the plat form state:
-        if self.serialComm:
+        if self.serialComm and not TEST_MODE:
             msgStr = "50.00:11.00:green:green:green:green:slow:off"
             self.serialComm.write(msgStr.encode('utf-8'))
         # Init the state manager.

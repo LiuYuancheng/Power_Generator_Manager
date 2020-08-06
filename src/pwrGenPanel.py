@@ -206,7 +206,7 @@ class PanelLoad(wx.Panel):
 #-----------------------------------------------------------------------------
     def _buidUISizer(self):
         """ build the control panel sizer. """
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        flagsR = wx.RIGHT
         sizerAll = wx.BoxSizer(wx.VERTICAL)
         sizerAll.Add(wx.StaticText(
             self, -1, 'System Load Indicators:'), flag=flagsR, border=2)
@@ -320,7 +320,7 @@ class PanelDebug(wx.Panel):
 #-----------------------------------------------------------------------------
     def _buidUISizer(self):
         """ Build the main UI Sizer. """
-        flagsR = wx.RIGHT | wx.ALIGN_CENTER_VERTICAL
+        flagsR = wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
         gs = wx.FlexGridSizer(13, 2, 5, 5)
 
