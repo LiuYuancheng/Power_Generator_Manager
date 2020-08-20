@@ -21,6 +21,8 @@ IMG_FD = 'img'
 ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico") # App Icon.
 MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png") # moto speed background image
 PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")  # pump speed background image
+PGIMG_PATH = os.path.join(dirpath, IMG_FD, "pwrbg.png")  # power generator background image
+SMKIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke.png")  # power generator background image
 
 #-------<GLOBAL PARAMTERS>-----------------------------------------------------
 iCtrlPanel = None   # Control panel
@@ -28,4 +30,5 @@ iDetailPanel = None # Debug and manually control panel.
 iMainFrame = None   # MainFrame.
 iMotoImgPnl = None  # Moto speed image panel.
 iPumpImgPnl = None  # Pump image speed panel.
+iPerGImgPnl = None  #
 iUpdateRate = 0.5   # main frame update rate 1 sec.

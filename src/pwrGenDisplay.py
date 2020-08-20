@@ -1,9 +1,10 @@
 import wx
 import time
 import json
-#from wx.adv import Animation, AnimationCtrl
 import wx.gizmos as gizmos
 import pwrGenGobal as gv
+import pwrGenPanel as pl
+
 import udpCom
 
 
@@ -22,9 +23,10 @@ class TrojanAttFrame(wx.Frame):
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
 
-        self.changeAlpha_timer = wx.Timer(self)
-        self.changeAlpha_timer.Start(100)       # 10 changes per second
-        self.Bind(wx.EVT_TIMER, self.changeAlpha)
+        #self.changeAlpha_timer = wx.Timer(self)
+        #self.changeAlpha_timer.Start(100)       # 10 changes per second
+        #self.Bind(wx.EVT_TIMER, self.changeAlpha)
+        
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         # Set the frame cover full desktop.
         #self.Maximize()
@@ -39,14 +41,10 @@ class TrojanAttFrame(wx.Frame):
         #self.ctrl.Play()
         #sizer.Add(self.ctrl, flag=wx.ALIGN_CENTER_VERTICAL |
         #          wx.CENTER, border=2)
-        image = wx.StaticBitmap(self, wx.ID_ANY)
-        image.SetBitmap(wx.Bitmap("img\\pwrbg.png"))
-        sizer.Add(image, flag=wx.ALIGN_CENTER_VERTICAL | wx.CENTER, border=2)
-        #self.stTxt = wx.StaticText(
-        #    self, -1, "Your computer has been took over by YC's Trojan, we will release control in 10 sec")
-        #self.stTxt.SetBackgroundColour(wx.Colour('GREEN'))
-        #self.stTxt.SetFont(wx.Font(30, wx.SWISS, wx.NORMAL, wx.NORMAL))
-        #sizer.Add(self.stTxt, flag=wx.ALIGN_CENTER, border=2)
+        #image = wx.StaticBitmap(self, wx.ID_ANY)
+        #image.SetBitmap(wx.Bitmap("img\\pwrbg.png"))
+        gv.iPerGImgPnl = pl.PanelGen(self)
+        sizer.Add(gv.iPerGImgPnl, flag= wx.CENTER, border=2)
         return sizer
 
  #--TrojanAttFrame--------------------------------------------------------------
