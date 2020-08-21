@@ -2,8 +2,9 @@
 #-----------------------------------------------------------------------------
 # Name:        serialCom.py
 #
-# Purpose:     This module will inheritance the python built-in serial module 
+# Purpose:     This module will inheritance the python serial.Serial module 
 #              with automatically serial port serach and connection function.
+#              Install serial: pip install pyserial
 #
 # Author:      Yuancheng Liu
 #
@@ -11,10 +12,11 @@
 # Copyright:   
 # License:     
 #-----------------------------------------------------------------------------
-import time
+
 import os
 import sys
 import glob
+import time
 from serial import Serial, SerialException
 
 BYTE_SIZE = 8
@@ -25,14 +27,16 @@ TIME_OUT = 1
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class serialCom(Serial):
-    """ The serialCom inheritance from python built-in serial.Serial class. Call 
-        read(int *) or write(bytes *) to read number of bytes from the serial
-        port or send bytes to the port. Call close() to close the port.
+    """ The serialCom inheritance from python serial.Serial class. Call read(int *) 
+        or write(bytes *) to read number of bytes from the serial port or send bytes 
+        to the port. Call close() to close the port.
     """
     def __init__(self, parent, serialPort=None, baudRate=9600):
         """ Init the serial comunication and if serialPort is None the program 
             will automatically find the port which can connected. For windows we 
-            use the last port(idx=-1) in the list and in linux we use first port(idx=0)  
+            use the last port(idx=-1) in the list and in linux we use first 
+            port(idx=0). For windows usage please also set the boudrate at the 
+            windows device manager.   
         """
         self.connected = False
         # Automatically find the serial port which can read and write.
@@ -69,31 +73,29 @@ class serialCom(Serial):
             self.connected = True
         except:
             print("serialCom: serial port open error.")
-        time.sleep(0.2) # sleep a short while to 
+        time.sleep(0.1) # Sleep a short while to wait the I/O to be ready for different system.
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-def testCase(testMode):
-
-    print("Start serial port communication test. Test mode %s \n" %str(testMode))
-    if testMode == 1:
+def testCase(mode):
+    if mode == 0:
+        print("Start serial port communication test. Test mode %s \n" %str(mode))
         print("Test Case 1: test connect to the un-readable port.")
         connector = serialCom(None,serialPort="COM_NOT_EXIST", baudRate=115200)
 
-    print("Test Case 2: test connect to com port.")
-    connector = serialCom(None, baudRate=115200)
-    #msgStr = "50.00:11.00:green:green:green:green:slow:on"
-    #connector.write(msgStr.encode('utf-8'))
-    time.sleep(1)
-    msgStr = '50.00:11.00:green:green:green:green:slow:off'
-    connector.write(msgStr.encode('utf-8'))
-
-    return
-    #connector.write('Test String'.encode('utf-8'))
-    
-    
-    #msg = connector.read(128)
-    print("Read message from the com: %s" %str(msg))
+        print("Test Case 2: test connect to com port.")
+        connector = serialCom(None, baudRate=115200)
+        try:
+            connector.write('Test String'.encode('utf-8'))
+        except Exception as e:
+            print('I/O exception:%s', e)
+        try:
+            msg = connector.read(128)
+            print("Read message from the com: %s" %str(msg))
+        except Exception as e:
+            print('I/O exception:%s', e)
+    else:
+         print("Add more other exception test here.")
 
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
