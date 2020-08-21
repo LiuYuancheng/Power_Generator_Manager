@@ -11,7 +11,7 @@
 # Copyright:   
 # License:     
 #-----------------------------------------------------------------------------
-
+import time
 import os
 import sys
 import glob
@@ -69,6 +69,7 @@ class serialCom(Serial):
             self.connected = True
         except:
             print("serialCom: serial port open error.")
+        time.sleep(0.2) # sleep a short while to 
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -81,10 +82,19 @@ def testCase(testMode):
 
     print("Test Case 2: test connect to com port.")
     connector = serialCom(None, baudRate=115200)
-    connector.write('Test String'.encode('utf-8'))
-    msg = connector.read(128)
+    #msgStr = "50.00:11.00:green:green:green:green:slow:on"
+    #connector.write(msgStr.encode('utf-8'))
+    time.sleep(1)
+    msgStr = '50.00:11.00:green:green:green:green:slow:off'
+    connector.write(msgStr.encode('utf-8'))
+
+    return
+    #connector.write('Test String'.encode('utf-8'))
+    
+    
+    #msg = connector.read(128)
     print("Read message from the com: %s" %str(msg))
 
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
-    testCase(1)
+    testCase(0)
