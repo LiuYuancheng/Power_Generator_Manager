@@ -2,12 +2,12 @@
 #-----------------------------------------------------------------------------
 # Name:        pwGenDisplay.py
 #
-# Purpose:     This module is used to create the situation display to connect to the
-#              Raspberry PI generator control by UDP.
+# Purpose:     This module is used to create the situation display frame show 
+#              overlay on the CSI OT-Platform HMI program.
 #
 # Author:      Yuancheng Liu
 #
-# Created:     2019/01/10
+# Created:     2020/07/22
 # Copyright:   YC @ Singtel Cyber Security Research & Development Laboratory
 # License:     YC
 #-----------------------------------------------------------------------------
@@ -15,87 +15,45 @@
 import wx
 import time
 import json
-import wx.gizmos as gizmos
 import pwrGenGobal as gv
 
-import udpCom
-
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-
-
 class GenDisplayFrame(wx.Frame):
     """ Power gnera.
     """
-    def __init__(self, parent, width, height):
-        wx.Frame.__init__(self, parent, title="GenDisplay",
+    def __init__(self, parent, width, height, position=(100, 100)):
+        wx.Frame.__init__(self, parent, title="GenDisplay", 
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
-        self.alphaValue = 255   # transparent control
-        self.alphaIncrement = -4
-        self.count = 500        # count to control when to stop the attack.
+        self.alphaValue = 155   # transparent control
         # Build the main UI.
+        self.SetTransparent(self.alphaValue)
         self.SetSizerAndFit(self.buidUISizer())
-
-        #self.changeAlpha_timer = wx.Timer(self)
-        #self.changeAlpha_timer.Start(100)       # 10 changes per second
-        #self.Bind(wx.EVT_TIMER, self.changeAlpha)
-
+        self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
-        # Set the frame cover full desktop.
-        #self.Maximize()
-        #self.ShowFullScreen(True)
         self.Show()
 
-#--TrojanAttFrame--------------------------------------------------------------
+#-----------------------------------------------------------------------------
     def buidUISizer(self):
         """ Build the UI and the return the wx.sizer. """
         sizer = wx.BoxSizer(wx.VERTICAL)
-        #self.ctrl = AnimationCtrl(self, -1, Animation("img\\motor.png"))
-        #self.ctrl.Play()
-        #sizer.Add(self.ctrl, flag=wx.ALIGN_CENTER_VERTICAL |
-        #          wx.CENTER, border=2)
-        #image = wx.StaticBitmap(self, wx.ID_ANY)
-        #image.SetBitmap(wx.Bitmap("img\\pwrbg.png"))
         gv.iPerGImgPnl = PanelGen(self)
         sizer.Add(gv.iPerGImgPnl, flag= wx.CENTER, border=2)
         return sizer
 
- #--TrojanAttFrame--------------------------------------------------------------
-    def changeAlpha(self, evt):
-        """ The term "alpha" means variable transparency this function we 
-            follow the examle in =: 
-            https://wiki.wxpython.org/Transparent%20Frames
-              as opposed to a "mask" which is binary transparency.
-              alpha == 255 :  fully opaque
-              alpha ==   0 :  fully transparent (mouse is ineffective!)
-            Only top-level controls can be transparent; no other controls can.
-            This is because they are implemented by the OS, not wx.
-        """
-        self.alphaValue += self.alphaIncrement
-        if (self.alphaValue) <= 0 or (self.alphaValue >= 255):
-            # Reverse the increment direction.
-            self.alphaIncrement = -self.alphaIncrement
-            if self.alphaValue <= 0:
-                self.alphaValue = 0
-            if self.alphaValue > 255:
-                self.alphaValue = 255
-        # Show the release time text.
-        self.count -=1
-        if self.count == 0:
-            self.onCloseWindow(None)
-        self.SetTransparent(self.alphaValue)
+#-----------------------------------------------------------------------------
+    def updateDisplay(self):
+        gv.iPerGImgPnl.updateDisplay()
 
-#--TrojanAttFrame--------------------------------------------------------------
+#-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
         """ Stop the timeer and close the window."""
-        self.changeAlpha_timer.Stop()
-        del self.changeAlpha_timer       # avoid a memory leak
+        gv.iPerGImgPnl = None
         self.Destroy()
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-
 class PanelGen(wx.Panel):
     """ Panel to show the moto rotation rate.(Motor speed indicator)"""
     def __init__(self, parent, panelSize=(400, 240)):
@@ -104,7 +62,6 @@ class PanelGen(wx.Panel):
         self.panelSize = panelSize
         self.bmp = wx.Bitmap(gv.PGIMG_PATH, wx.BITMAP_TYPE_ANY)
         self.smkBm = wx.Bitmap(gv.SMKIMG_PATH, wx.BITMAP_TYPE_ANY)
-
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
         self.maxVal = 80    # max pump line hight

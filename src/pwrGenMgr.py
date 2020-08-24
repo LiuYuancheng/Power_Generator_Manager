@@ -22,7 +22,7 @@ import M2PLC221 as m221
 import S7PLC1200 as s71200
 
 UDP_PORT = 5005
-TEST_MODE = True    # Local test mode flag.
+TEST_MODE = False    # Local test mode flag.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
@@ -34,7 +34,7 @@ class pwrGenClient(object):
         to PLC and Arduino. A UDP echo server will also be inited to response
         the UI control's request. 
     """
-    def __init__(self, parent, debug=False):
+    def __init__(self, parent, debug=True):
         # Set the load number.
         self.parent = parent
         self.loadNum = 0
@@ -75,6 +75,15 @@ class pwrGenClient(object):
                     'Parm': {}}
         """
         if self.debug: print("Incomming message: %s" %str(msg))
+        if msg.decode('utf-8') == 'A;1':
+            time.sleep(10)
+            msgStr = "52.00:00.00:red:red:red:red:off:on"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            time.sleep(5)
+            msgStr = "52.00:00.00:red:red:red:red:off:off"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            return None
+
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         msgDict = json.loads(msg.decode('utf-8'))
         if msgDict['Cmd'] == 'Get':
