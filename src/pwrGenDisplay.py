@@ -96,7 +96,7 @@ class PanelGen(wx.Panel):
         dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Pspd']]))
         dc.DrawText("Pump Speed: %s" %self.genDict['Pspd'], 32, 208)
         dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Mspd']]))
-        dc.DrawText("Moto Speed: %s" , 135, 208)
+        dc.DrawText("Moto Speed: %s" %self.genDict['Mspd'], 135, 208)
 
         # draw the pump LED
         dc.SetBrush(wx.Brush(colorDict[self.genDict['Pled']]))
