@@ -22,8 +22,9 @@ ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico") # App Icon.
 MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png") # moto speed background image
 PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")  # pump speed background image
 PGIMG_PATH = os.path.join(dirpath, IMG_FD, "pwrbg.png")  # power generator background image
-SMKIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke.png")  # power generator background image
-SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")  # power generator background image
+SMKOIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke_on.png")  # smoke on image
+SMKFIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke_off.png")  # smoke off image
+SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")  # siren on image
 
 
 #-------<GLOBAL PARAMTERS>-----------------------------------------------------
