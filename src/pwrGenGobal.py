@@ -23,6 +23,8 @@ MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png") # moto speed background 
 PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")  # pump speed background image
 PGIMG_PATH = os.path.join(dirpath, IMG_FD, "pwrbg.png")  # power generator background image
 SMKIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke.png")  # power generator background image
+SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")  # power generator background image
+
 
 #-------<GLOBAL PARAMTERS>-----------------------------------------------------
 iCtrlPanel = None   # Control panel

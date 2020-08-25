@@ -62,71 +62,71 @@ class PanelGen(wx.Panel):
         self.panelSize = panelSize
         self.bmp = wx.Bitmap(gv.PGIMG_PATH, wx.BITMAP_TYPE_ANY)
         self.smkBm = wx.Bitmap(gv.SMKIMG_PATH, wx.BITMAP_TYPE_ANY)
+        self.sirBm = wx.Bitmap(gv.SIRIMG_PATH, wx.BITMAP_TYPE_ANY)
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
-        self.maxVal = 80    # max pump line hight
-        self.pos = 80       # pump line position (from top to buttom)
-        self.pumpSpd = 'off'
+        self.toggle = True  # display toggle flash flag
+        self.genDict = {'Freq': '50.00',    # frequence (dd.dd)
+                        'Volt': '11.00',    # voltage (dd.dd)
+                        # frequence led (green/amber/off)
+                        'Fled': 'green',
+                        'Vled': 'green',    # voltage led (green/amber/off)
+                        'Mled': 'green',    # motor led (green/amber/off)
+                        'Pled': 'green',    # pump led (green/amber/off)
+                        # smoke indicator (fast/slow/off)
+                        'Smok': 'slow',
+                        'Pspd': 'off',      # pump speed (high/low/off)
+                        'Mspd': 'off',      # moto speed (high/low/off)
+                        'Sirn': 'on',      # siren (on/off)
+                        }
 
 #--PanelImge--------------------------------------------------------------------
     def onPaint(self, evt):
         """ Main draw function."""
         dc = wx.PaintDC(self)
         w, h = self.panelSize
-        # pump back ground.
+        colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
+                         'on': 'Green', 'off': 'Black', 'slow': 'Yellow', 'fast': 'Red'}
+        # display back ground.
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
-        color = 'Gray'
-        if self.pumpSpd == 'low':
-            color = 'Green'
-        elif self.pumpSpd == 'high':
-            color = 'Yellow'
-       # draw pump speed text.
-        #dc.SetBrush(wx.Brush(wx.Colour('Black')))
-        #dc.DrawRectangle(270, 1505, 50, 15)
-        #dc.SetPen(wx.Pen(color, width=5, style=wx.PENSTYLE_SOLID))
-        #dc.SetTextForeground(wx.Colour(color))
-        #dc.DrawText(str(self.pumpSpd), 5, 5)
-        # draw pump motion indicator.
-
+       # draw moto and pump speed text.
+        dc.SetBrush(wx.Brush(wx.Colour('Gray')))
+        dc.DrawRectangle(30, 205, 200, 25)
         dc.SetPen(wx.Pen('Black', width=1, style=wx.PENSTYLE_SOLID))
-        # draw the LED
-        dc.SetBrush(wx.Brush('Yellow'))
+        dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Pspd']]))
+        dc.DrawText("Pump Speed: %s" %self.genDict['Pspd'], 32, 208)
+        dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Mspd']]))
+        dc.DrawText("Moto Speed: %s" , 135, 208)
+
+        # draw the pump LED
+        dc.SetBrush(wx.Brush(colorDict[self.genDict['Pled']]))
         dc.DrawCircle(35, 50, 7)
+        # draw the moto LED
+        dc.SetBrush(wx.Brush(colorDict[self.genDict['Mled']]))
         dc.DrawCircle(250, 105, 7)
 
-        dc.DrawBitmap(self._scaleBitmap(self.smkBm, 80, 100), 140, 20)
-
+        if self.genDict['Smok'] != 'off':
+            if self.toggle: dc.DrawBitmap(self._scaleBitmap(self.smkBm, 80, 100), 140, 20)
+        
+        if self.genDict['Sirn'] != 'off':
+            if self.toggle: dc.DrawBitmap(self._scaleBitmap(self.sirBm, 60, 50), 310, 30)
 
         # Draw the frequence part.
-        
         dc.SetTextForeground(wx.Colour('White'))
         dc.DrawText("Frequency", 260, 135)
         dc.SetPen(wx.Pen('BLACK'))
         for i in range(1, 10):
-            brushColor = 'Green'
-            dc.SetBrush(wx.Brush(brushColor))
+            dc.SetBrush(wx.Brush(colorDict[self.genDict['Fled']]))
             dc.DrawRectangle(265, i*6+150, 50, 8)
-        dc.DrawText("50.00 HZ", 260, 215)
+        dc.DrawText("%s HZ" %self.genDict['Freq'], 260, 215)
         
         # Draw the voltage part
         dc.DrawText("Voltage", 330, 135)
         dc.SetPen(wx.Pen('BLACK'))
         for i in range(1, 10):
-            brushColor = 'Green'
-            dc.SetBrush(wx.Brush(brushColor))
+            dc.SetBrush(wx.Brush(colorDict[self.genDict['Vled']]))
             dc.DrawRectangle(330, i*6+150, 50, 8)
-        dc.DrawText("11.00 KV", 330, 215)
-
-
-
-
-#-----------------------------------------------------------------------------
-    def setPumpSpeed(self, speed):
-        if speed in ('off', 'low', 'high'):
-            self.pumpSpd = speed
-            self.updateDisplay(updateFlag=True)
-        else:
-            print('PanelMoto : input speed value is invalid %s' % str(speed))
+        dc.DrawText("%s KV" %self.genDict['Volt'], 330, 215)
         
 #--PanelImge--------------------------------------------------------------------
     def _scaleBitmap(self, bitmap, width, height):
@@ -152,24 +152,20 @@ class PanelGen(wx.Panel):
         if not bitMap: return
         self.bmp = bitMap
 
+#--PanelImge--------------------------------------------------------------------
+    def updateData(self, inputDict):
+        for key in self.genDict.keys():
+            self.genDict[key] = inputDict[key]
+
 #--PanelMap--------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
         """ Set/Update the display: if called as updateDisplay() the function will 
             update the panel, if called as updateDisplay(updateFlag=?) the function
             will set the self update flag.
         """
-        if self.pumpSpd == 'off' and (not updateFlag):
-            self.maxVal = self.pos = 80
-            return
-        self.maxVal = 40 if self.pumpSpd == 'low' else 80
-        addVal = 10 if self.pumpSpd == 'low' else 20
-        if self.pos < 100 - self.maxVal:
-            self.pos = 100
-        else:
-            self.pos -= addVal
+        self.toggle = not self.toggle
         self.Refresh(False)
         self.Update()
-
 
 if __name__ == "__main__":
     app = wx.App()
