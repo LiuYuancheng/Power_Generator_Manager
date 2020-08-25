@@ -22,9 +22,23 @@ This project contains two sections:
 1. snap7 + python-snap7 (need to install for S71200 PLC control)
 
    ```
-   Install instruction: 
+   Install instruction on linux: 
    http://simplyautomationized.blogspot.com/2014/12/raspberry-pi-getting-data-from-s7-1200.html
    ```
+
+   Install snap7 on windows: 
+
+   - 1.1 Install snap7 module from PIP:
+
+     ```
+     pip install python-snap7
+     ```
+
+   - 1.2 Setup snap7 Used dll and lib file system environment path: 
+
+     Computer **>** System Property **>** Advanced system settings **>** Environment Variables **>** System variable: 
+
+     ![](doc/dll_Setup.png)
 
 2. wxPython
 

@@ -22,7 +22,7 @@ import M2PLC221 as m221
 import S7PLC1200 as s71200
 
 UDP_PORT = 5005
-TEST_MODE = False    # Local test mode flag.
+TEST_MODE = True    # Local test mode flag.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
