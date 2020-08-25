@@ -27,6 +27,7 @@ class GenDisplayFrame(wx.Frame):
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
         self.alphaValue = 155   # transparent control
+        self.updateFlag = False
         # Build the main UI.
         self.SetTransparent(self.alphaValue)
         self.SetSizerAndFit(self.buidUISizer())
@@ -43,14 +44,24 @@ class GenDisplayFrame(wx.Frame):
         return sizer
 
 #-----------------------------------------------------------------------------
+    def updateData(self, dataDictStr):
+        resultDict = json.loads(dataDictStr)
+        gv.iPerGImgPnl.updateData(resultDict)
+        self.updateFlag = True
+        print("xxxxxxxxxxxxxxxxxxxxxxxxx")
+
+#-----------------------------------------------------------------------------
     def updateDisplay(self):
-        gv.iPerGImgPnl.updateDisplay()
+        if self.updateFlag:
+            gv.iPerGImgPnl.updateDisplay()
+        self.updateFlag = False
 
 #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
         """ Stop the timeer and close the window."""
         gv.iPerGImgPnl = None
         self.Destroy()
+        gv.iDisFrame = None
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -85,8 +96,8 @@ class PanelGen(wx.Panel):
         """ Main draw function."""
         dc = wx.PaintDC(self)
         w, h = self.panelSize
-        colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
-                         'on': 'Green', 'off': 'Black', 'slow': 'Yellow', 'fast': 'Red'}
+        colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red', 'low': 'Yellow',
+                     'high': 'Green', 'on': 'Green', 'off': 'Black', 'slow': 'Yellow', 'fast': 'Red'}
         # display back ground.
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
        # draw moto and pump speed text.

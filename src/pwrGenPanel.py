@@ -13,6 +13,8 @@ import wx
 from math import sin, cos, radians, pi
 
 import pwrGenGobal as gv
+import pwrGenDisplay as gd
+
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -259,24 +261,26 @@ class PanelCtrl(wx.Panel):
         """ build the control panel sizer. """
         flagsR = wx.RIGHT 
         ctSizer = wx.BoxSizer(wx.VERTICAL)
-        ctSizer.AddSpacer(10)
-        ctSizer.Add(wx.StaticText(self, label=" System Power".ljust(15)),
-                  flag=flagsR, border=2)
-        ctSizer.AddSpacer(10)
-
+        ctSizer.AddSpacer(3)
         self.sensorPwBt = wx.Button(self, label='All Sensors Pwr  ', size=(120, 30))
         self.sensorPwBt.SetBackgroundColour(wx.Colour('Gray'))
         ctSizer.Add(self.sensorPwBt, flag=flagsR, border=2)
-        ctSizer.AddSpacer(10)
+        ctSizer.AddSpacer(3)
 
         self.mainPwrBt = wx.Button(self, label='System Main Pwr ', size=(120, 30))
         self.mainPwrBt.SetBackgroundColour(wx.Colour('Gray'))
         ctSizer.Add(self.mainPwrBt, flag=flagsR, border=2)
-        ctSizer.AddSpacer(10)
+        ctSizer.AddSpacer(3)
         
         self.debugBt = wx.Button(self, label='Debug Panel >> ', size=(120, 30))
         self.debugBt.Bind(wx.EVT_BUTTON, self.showDebug)
         ctSizer.Add(self.debugBt, flag=flagsR, border=2)
+        ctSizer.AddSpacer(3)
+
+        self.displayBt = wx.Button(self, label='Display Panel >> ', size=(120, 30))
+        self.displayBt.Bind(wx.EVT_BUTTON, self.showDisplay)
+        ctSizer.Add(self.displayBt, flag=flagsR, border=2)        
+
         return ctSizer
 
 #--PanelCtrl-------------------------------------------------------------------
@@ -298,6 +302,11 @@ class PanelCtrl(wx.Panel):
             gv.iDetailPanel = PanelDebug(self.debugFrame)
             self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
             self.debugFrame.Show()
+
+#--PanelCtrl------------------------------------------------------------------
+    def showDisplay(self, event):
+        if gv.iDisFrame == None:
+            gv.iDisFrame = gd.GenDisplayFrame(self, 410, 230)
 
 #--PanelCtrl------------------------------------------------------------------
     def infoWinClose(self, event):

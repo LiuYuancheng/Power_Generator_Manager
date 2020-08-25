@@ -30,6 +30,7 @@ SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")  # power generator back
 iCtrlPanel = None   # Control panel
 iDetailPanel = None # Debug and manually control panel.
 iMainFrame = None   # MainFrame.
+iDisFrame = None    # Display frame.
 iMotoImgPnl = None  # Moto speed image panel.
 iPumpImgPnl = None  # Pump image speed panel.
 iPerGImgPnl = None  #

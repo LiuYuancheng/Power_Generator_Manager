@@ -23,7 +23,7 @@ import pwrGenPanel as pl
 
 UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
-TEST_MD = False
+TEST_MD = True
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 #-----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ class AppFrame(wx.Frame):
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
         # build the UI.
-        self.alphaValue = 128
+        self.alphaValue = 200
         self.SetSizer(self._buildUISizer())
         self.SetTransparent(self.alphaValue)
         # Set the raspberry pi UDP connector.
@@ -231,6 +231,9 @@ class AppFrame(wx.Frame):
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Gen'})
             result = self.connector.sendMsg(msgStr, resp=True)
             self.SetGensLED(result)
+            # update the generator 
+            if gv.iDisFrame and gv.iPerGImgPnl:
+                gv.iDisFrame.updateData(result)
         elif evnt == 'SetGen':
             msgStr = json.dumps({'Cmd': 'SetGen', 'Parm': parm})
             result = self.connector.sendMsg(msgStr, resp=True)
@@ -358,6 +361,7 @@ class AppFrame(wx.Frame):
                 self.lastPeriodicTime['Data'] = now
                 self.connectRsp('Load')
                 self.connectRsp('Gen')
+                if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
 #-----------------------------------------------------------------------------
     def onClose(self, event):
