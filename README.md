@@ -13,7 +13,7 @@ This project contains two sections:
 
 ###### Situation Display UI
 
-![](doc\record.gif)
+![](doc/record.gif)
 
 ------
 
