@@ -11,6 +11,10 @@ This project contains two sections:
 
 ![](doc/newUI.jpg)
 
+###### Situation Display UI
+
+![](doc\record.gif)
+
 ------
 
 #### Program Setup
