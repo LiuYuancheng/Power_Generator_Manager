@@ -109,12 +109,12 @@ class PanelGen(wx.Panel):
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
        # draw moto and pump speed text.
         dc.SetBrush(wx.Brush(wx.Colour('Gray')))
-        dc.DrawRectangle(30, 205, 200, 25)
+        dc.DrawRectangle(15, 205, 225, 25)
         dc.SetPen(wx.Pen('Black', width=1, style=wx.PENSTYLE_SOLID))
         dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Pspd']]))
-        dc.DrawText("Pump Speed: %s" % self.genDict['Pspd'], 32, 208)
+        dc.DrawText("Pump Speed: %s" % self.genDict['Pspd'], 20, 208)
         dc.SetTextForeground(wx.Colour(colorDict[self.genDict['Mspd']]))
-        dc.DrawText("Moto Speed: %s" % self.genDict['Mspd'], 135, 208)
+        dc.DrawText("Moto Speed: %s" % self.genDict['Mspd'], 140, 208)
         # draw the pump LED
         dc.SetBrush(wx.Brush(colorDict[self.genDict['Pled']]))
         dc.DrawCircle(35, 50, 7)
@@ -128,21 +128,24 @@ class PanelGen(wx.Panel):
         # draw the siren indiactor.
         if self.genDict['Sirn'] != 'off' and self.toggle:
             dc.DrawBitmap(self._scaleBitmap(self.sirBm, 60, 50), 310, 30)
-        # Draw the frequence part.
+
         dc.SetTextForeground(wx.Colour('White'))
-        dc.DrawText("Frequency", 260, 135)
-        dc.SetPen(wx.Pen('BLACK'))
-        for i in range(1, 10):
-            dc.SetBrush(wx.Brush(colorDict[self.genDict['Fled']]))
-            dc.DrawRectangle(265, i*6+150, 50, 8)
-        dc.DrawText("%s HZ" % self.genDict['Freq'], 265, 215)
         # Draw the voltage part
-        dc.DrawText("Voltage", 330, 135)
+        dc.DrawText("Voltage", 260, 135)
         dc.SetPen(wx.Pen('BLACK'))
         for i in range(1, 10):
             dc.SetBrush(wx.Brush(colorDict[self.genDict['Vled']]))
+            dc.DrawRectangle(265, i*6+150, 50, 8)
+        dc.DrawText("%s KV" % self.genDict['Volt'], 265, 215)
+
+        # Draw the frequence part.
+        dc.DrawText("Frequency", 330, 135)
+        dc.SetPen(wx.Pen('BLACK'))
+        for i in range(1, 10):
+            dc.SetBrush(wx.Brush(colorDict[self.genDict['Fled']]))
             dc.DrawRectangle(330, i*6+150, 50, 8)
-        dc.DrawText("%s KV" % self.genDict['Volt'], 335, 215)
+        dc.DrawText("%s HZ" % self.genDict['Freq'], 335, 215)
+
         
 #--PanelGen--------------------------------------------------------------------
     def _scaleBitmap(self, bitmap, width, height):

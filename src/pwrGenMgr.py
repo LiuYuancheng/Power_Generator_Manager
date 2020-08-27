@@ -15,6 +15,7 @@
 import time
 import json
 import re
+import _thread # python2 thread is changed to '_thread' in python3
 
 import udpCom
 import serialCom
@@ -76,12 +77,7 @@ class pwrGenClient(object):
         """
         if self.debug: print("Incomming message: %s" %str(msg))
         if msg.decode('utf-8') == 'A;1':
-            time.sleep(10)
-            msgStr = "52.00:00.00:red:red:red:red:off:on"
-            self.serialComm.write(msgStr.encode('utf-8'))
-            time.sleep(5)
-            msgStr = "52.00:00.00:red:red:red:red:off:off"
-            self.serialComm.write(msgStr.encode('utf-8'))
+            _thread.start_new_thread( self.startAttack, ("Thread-1", ) )
             return None
 
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
@@ -202,6 +198,35 @@ class pwrGenClient(object):
         parm = 1 if val == 'on' else 0
         self.plc3.writeMem('M4', parm)
         self.plc3.writeMem('M5', parm)
+#--------------------------------------------------------------------------
+    def startAttack(self, threadName):
+        """ Simulate the attack situation."""
+        time.sleep(10)
+        msgStr = "52.00:11.00:amber:amber:amber:amber:off:on"
+        self.serialComm.write(msgStr.encode('utf-8'))
+        genDict = {'Freq': '52.00',
+                   'Volt': '11.00',
+                   'Fled': 'amber',
+                   'Vled': 'amber',
+                   'Mled': 'amber',
+                   'Pled': 'amber',
+                   'Smok': 'off',
+                   'Sirn': 'on',}
+        self.stateMgr.updateGenSerState(genDict)
+        time.sleep(5)
+
+        msgStr = "50.00:00.00:red:red:red:red:off:off"
+        self.serialComm.write(msgStr.encode('utf-8'))
+        genDict = {'Freq': '50.00',
+                   'Volt': '00.00',
+                   'Fled': 'red',
+                   'Vled': 'red',
+                   'Mled': 'red',
+                   'Pled': 'red',
+                   'Smok': 'off',
+                   'Sirn': 'off',}
+        self.stateMgr.updateGenSerState(genDict)
+        return None
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -247,7 +272,7 @@ class stateManager(object):
 #--------------------------------------------------------------------------
     def getLoadNum(self):
         """ Return the number of loads """
-        return sum(self.loadDict.value())
+        return sum(self.loadDict.values())
 
 #--------------------------------------------------------------------------
     def updateGenSerState(self, changeDict):

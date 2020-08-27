@@ -334,11 +334,11 @@ class PanelDebug(wx.Panel):
         gs = wx.FlexGridSizer(13, 2, 5, 5)
 
         gs.Add(wx.StaticText(self, label=' Frequency : '), flag=flagsR, border=2)
-        self.genFieldlList['Freq'] = wx.TextCtrl(self, -1, "0.0")
+        self.genFieldlList['Freq'] = wx.TextCtrl(self, -1, "50.00")
         gs.Add(self.genFieldlList['Freq'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Voltage : '), flag=flagsR, border=2)
-        self.genFieldlList['Volt'] = wx.TextCtrl(self, -1, "0.0")
+        self.genFieldlList['Volt'] = wx.TextCtrl(self, -1, "11.00")
         gs.Add(self.genFieldlList['Volt'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Frequency LED : '),
@@ -376,7 +376,7 @@ class PanelDebug(wx.Panel):
         gs.Add(wx.StaticText(self, label=' Siren : '), flag=flagsR, border=2)
         self.genFieldlList['Sirn'] = wx.ComboBox(
             self, -1, choices=['on', 'off'])
-        self.genFieldlList['Sirn'].SetSelection(0)
+        self.genFieldlList['Sirn'].SetSelection(1)
         gs.Add(self.genFieldlList['Sirn'], flag=flagsR, border=2)
 
         gs.Add(wx.StaticText(self, label=' Pump speed : '), flag=flagsR, border=2)
