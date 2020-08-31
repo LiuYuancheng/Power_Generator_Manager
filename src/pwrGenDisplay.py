@@ -2,8 +2,9 @@
 #-----------------------------------------------------------------------------
 # Name:        pwGenDisplay.py
 #
-# Purpose:     This module is used to create the situation display frame show 
-#              overlay on the CSI OT-Platform HMI program.
+# Purpose:     This module is used to create a transparent, no window board live 
+#              situation display frame show overlay on top of the CSI OT-Platform 
+#              HMI program.
 #
 # Author:      Yuancheng Liu
 #
@@ -17,22 +18,21 @@ import time
 import json
 import pwrGenGobal as gv
 
-DEF_POS = (100, 100)    # default show up position on the screen
-
+DEF_POS = (600, 700)    # default show up position on the screen
+TRANS_PCT = 70          # Windows transparent percentage.
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class GenDisplayFrame(wx.Frame):
-    """ Power generator module display frame."""
+    """ Power generator module live situation display frame."""
 
     def __init__(self, parent, width, height, position=DEF_POS):
         wx.Frame.__init__(self, parent, title="GenDisplay",
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
-        self.alphaValue = 155   # transparent control
-        self.updateFlag = False # display update flag.
+        self.updateFlag = False  # flag to identify whether the panel need update.
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
-        self.SetTransparent(self.alphaValue)
+        self.SetTransparent(int(TRANS_PCT*255/100))
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Show()
@@ -53,18 +53,17 @@ class GenDisplayFrame(wx.Frame):
         """
         resultDict = json.loads(dataDictStr)
         gv.iPerGImgPnl.updateData(resultDict)
-        self.updateFlag = True # Set the update flag to true for update.
+        self.updateFlag = True  # Set the update flag to true for update.
 
 #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ Call the panel update function to update the display."""
-        if self.updateFlag:
-            gv.iPerGImgPnl.updateDisplay()
+        if self.updateFlag: gv.iPerGImgPnl.updateDisplay()
         self.updateFlag = False  # reset the update flag after display updated.
 
 #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
-        """ Stop the timer and close the window."""
+        """ Close the window and reset the gv parameters."""
         gv.iPerGImgPnl = None
         self.Destroy()
         gv.iDisFrame = None
@@ -72,7 +71,7 @@ class GenDisplayFrame(wx.Frame):
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelGen(wx.Panel):
-    """ Panel to show the power generator components situation. """
+    """ Panel to show the power generator components live situation. """
     def __init__(self, parent, panelSize=(400, 240)):
         wx.Panel.__init__(self, parent, size=panelSize)
         self.SetBackgroundColour(wx.Colour(200, 200, 200))
@@ -102,12 +101,12 @@ class PanelGen(wx.Panel):
         """ Main draw function by using wx.PaintDC."""
         dc = wx.PaintDC(self)
         colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
-                     'low': 'Yellow', 'high': 'Green', 'on': 'Green', 'off': 'Black',
-                     'slow': 'Yellow', 'fast': 'Red'}
+                     'low': 'Yellow', 'high': 'Green', 'on': 'Green', 
+                     'off': 'Black', 'slow': 'Yellow', 'fast': 'Red'} # color code.
         # display back ground.
         w, h = self.panelSize
         dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
-       # draw moto and pump speed text.
+        # draw moto and pump speed text.
         dc.SetBrush(wx.Brush(wx.Colour('Gray')))
         dc.DrawRectangle(15, 205, 225, 25)
         dc.SetPen(wx.Pen('Black', width=1, style=wx.PENSTYLE_SOLID))
@@ -130,6 +129,7 @@ class PanelGen(wx.Panel):
             dc.DrawBitmap(self._scaleBitmap(self.sirBm, 60, 50), 310, 30)
 
         dc.SetTextForeground(wx.Colour('White'))
+        
         # Draw the voltage part
         dc.DrawText("Voltage", 260, 135)
         dc.SetPen(wx.Pen('BLACK'))
@@ -146,7 +146,6 @@ class PanelGen(wx.Panel):
             dc.DrawRectangle(330, i*6+150, 50, 8)
         dc.DrawText("%s HZ" % self.genDict['Freq'], 335, 215)
 
-        
 #--PanelGen--------------------------------------------------------------------
     def _scaleBitmap(self, bitmap, width, height):
         """ Resize a input bitmap.(bitmap-> image -> resize image -> bitmap)"""
@@ -173,12 +172,15 @@ class PanelGen(wx.Panel):
 
 #--PanelGen--------------------------------------------------------------------
     def updateData(self, inputDict):
-        """ Called by parent object to update the display panel data.
+        """ Called by parent object to update the display panel data dict<genDict>.
         Args:
-            dataDictStr ([str]): [data dict json string]
+            dataDictStr ([Dict]): [data dict]
         """
         for key in self.genDict.keys():
-            self.genDict[key] = inputDict[key]
+            try:
+                self.genDict[key] = inputDict[key]
+            except Exception as e:
+                print("Data set key missing exception: %s" %str(e))
 
 #--PanelGen--------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
@@ -195,5 +197,5 @@ class PanelGen(wx.Panel):
 #-----------------------------------------------------------------------------
 if __name__ == "__main__":
     app = wx.App()
-    f = GenDisplayFrame(None, 410, 230)
+    mainFrame = GenDisplayFrame(None, 410, 230)
     app.MainLoop()
