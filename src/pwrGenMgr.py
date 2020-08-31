@@ -19,9 +19,11 @@ import _thread # python2 thread is changed to '_thread' in python3
 
 import udpCom
 import serialCom
+import BgCtrl as bg
 import M2PLC221 as m221
 import S7PLC1200 as s71200
 
+APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
 TEST_MODE = True    # Local test mode flag.
 PLC1_IP = '192.168.10.72'
@@ -40,6 +42,7 @@ class pwrGenClient(object):
         self.parent = parent
         self.loadNum = 0
         self.debug = debug  # debug mode flag.
+        self.bgCtrler = bg.BgController(APP_NAME)
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         # try to connect to the PLCs.
