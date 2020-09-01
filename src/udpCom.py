@@ -52,7 +52,7 @@ class udpClient(object):
 #--udpClient-------------------------------------------------------------------
     def disconnect(self):
         """ Send a empty logout message and close the socket."""
-        self.sendMsg('123', resp=False)
+        self.sendMsg('', resp=False)
         time.sleep(RESP_TIME) # sleep very short while before close the socket to \
         # make sure the server have enought time to handle the close method, when \
         # server computer is fast, this is not a problem.

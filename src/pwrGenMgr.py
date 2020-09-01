@@ -16,6 +16,8 @@ import time
 import json
 import re
 import _thread # python2 thread is changed to '_thread' in python3
+import threading    # create multi-thread test case.
+
 
 import udpCom
 import serialCom
@@ -26,6 +28,7 @@ import S7PLC1200 as s71200
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
 TEST_MODE = True    # Local test mode flag.
+TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
@@ -50,7 +53,9 @@ class pwrGenClient(object):
         self.plc2 = s71200.S7PLC1200(PLC2_IP)
         self.plc3 = m221.M221(PLC3_IP)
         # Init the UDP server.
-        self.server = udpCom.udpServer(None, UDP_PORT)
+        # self.server = udpCom.udpServer(None, UDP_PORT)
+        self.servThread = CommThread(self, 0, "server thread")
+
         # init the plat form state:
         if self.serialComm and not TEST_MODE:
             msgStr = "50.00:11.00:green:green:green:green:slow:off"
@@ -68,8 +73,21 @@ class pwrGenClient(object):
         """ Controler request handling loop.
         """
         print("UDP echo-server main loop start")
-        self.server.serverStart(handler=self.msgHandler)
-        print("UDP echo-server main loop end")
+        #self.server.serverStart(handler=self.msgHandler)
+        self.servThread.start()
+        print("Manager main loop start.")
+        while self.bgCtrler.bgRun():
+            # Get the 3 PLC load state:
+            if not TEST_MODE: self.getLoadState()
+            time.sleep(TIME_INT)
+        # Stop the program and stop all the connection
+        self.servThread.stop()
+        self.servThread = None
+        if self.serialComm: self.serialComm.close()
+        if self.plc1.connected: self.plc1.disconnect()
+        if self.plc2.connected: self.plc2.disconnect()
+        if self.plc3.connected: self.plc3.disconnect()
+        print("Power generator main loop end.")
 
 #--------------------------------------------------------------------------
     def msgHandler(self, msg):
@@ -79,10 +97,10 @@ class pwrGenClient(object):
                     'Parm': {}}
         """
         if self.debug: print("Incomming message: %s" %str(msg))
+        if msg == b'' or msg == b'end': return None # get at program terminate signal.
         if msg.decode('utf-8') == 'A;1':
             _thread.start_new_thread( self.startAttack, ("Thread-1", ) )
             return None
-
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         msgDict = json.loads(msg.decode('utf-8'))
         if msgDict['Cmd'] == 'Get':
@@ -99,7 +117,7 @@ class pwrGenClient(object):
                 # Generator's Ardurino controller state.
                 respStr = self.stateMgr.getGenInfo()
             elif msgDict['Parm'] == 'Load':
-                if not TEST_MODE: self.getLoadState()
+                
                 respStr = self.stateMgr.getLoadInfo()
             else:
                 print('msgHandler : can not handle the un-expect cmd: %s' %str(msgDict['Parm']))
@@ -143,20 +161,20 @@ class pwrGenClient(object):
                     'City': 0,      # City power
                     }
         # get the PLC 1 state:
-        s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
-        print(">>" + str(s1resp))
-        loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
-        loadDict['Airp'] = 1 if s1resp[1] == '04' else 0
+        if self.plc1.connected:
+            s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
+            loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
+            loadDict['Airp'] = 1 if s1resp[1] == '04' else 0
         # get PLC 2 state:
-        loadDict['Resi'] = 0 if self.plc2.getMem('qx0.2') else 1
-        loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0') else 0
+        if self.plc2.connected:
+            loadDict['Resi'] = 0 if self.plc2.getMem('qx0.2') else 1
+            loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0') else 0
         # get PLC 3 state
-        s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
-        #print(">>" + str(s3resp))
-        loadDict['TrkA'] = 1 if s3resp[1] == '04' else 0
-        loadDict['TrkB'] = 1 if s3resp[2] == '10' else 0
-        loadDict['City'] = 1 if s3resp[7] == '00' else 0
-
+        if self.plc3.connected:
+            s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
+            loadDict['TrkA'] = 1 if s3resp[1] == '04' else 0
+            loadDict['TrkB'] = 1 if s3resp[2] == '10' else 0
+            loadDict['City'] = 1 if s3resp[7] == '00' else 0
         self.stateMgr.updateLoadPlcState(loadDict)       
 
 #--------------------------------------------------------------------------
@@ -308,10 +326,35 @@ class stateManager(object):
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 
-def testCase():
+class CommThread(threading.Thread):
+    """ Thread to test the UDP server/insert the tcp server in other program.""" 
+    def __init__(self, parent, threadID, name):
+        threading.Thread.__init__(self)
+        self.threadName = name
+        self.parent = parent
+        self.server = udpCom.udpServer(None, UDP_PORT)
+
+    def run(self):
+        """ Start the udp server's main message handling loop."""
+        print("Server thread run() start.")
+        self.server.serverStart(handler=self.parent.msgHandler)
+        print("Server thread run() end.")
+        self.threadName = None # set the thread name to None when finished.
+
+    def stop(self):
+        """ Stop the udp server. Create a endclient to bypass the revFrom() block."""
+        self.server.serverStop()
+        endClient = udpCom.udpClient(('127.0.0.1', UDP_PORT))
+        endClient.disconnect()
+        endClient = None
+
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+def main(mode=0):
     client = pwrGenClient(None, debug=True)
     client.mainLoop()
 
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
-    testCase()
+    main()
