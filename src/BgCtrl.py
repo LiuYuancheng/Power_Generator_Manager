@@ -28,12 +28,13 @@
     background, run the BgCtrl.py in the program[A]'s folder and input the control 
     cmd [Y/N]. If we want to stop the bgprogram, the bgProgramRcd.txt file will 
     be removed.
+
+    For windows system platform need to install lib: pip install psutil. Windows 
+    platform can not use <os.kill(pid, 0)>
 """
 
 import os
 import datetime
-
-import psutil   # >> pip install psutil
 
 BG_RCD = "bgProgramRcd.txt" # background program record
 
@@ -69,6 +70,23 @@ class BgController(object):
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
+def processExist(pid):
+    """""[Check whether a process is exist in the system.]""
+    Args:
+        pid ([int]): process 
+    """
+    if os.name == 'nt':
+        from psutil import pid_exists  # >> pip install psutil
+        return pid_exists(pid)
+    else:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        else:
+            return True
+    
+#-----------------------------------------------------------------------------
 def main(mode=0):
     print("Check the background program running situation:")
     processID = None
@@ -85,7 +103,7 @@ def main(mode=0):
         print("No background record file, the program is not running.")
         exit()
 
-    if psutil.pid_exists(processID):
+    if processExist(processID):
         print("The program is running. Do you want end it [Y/N]:")
     else:
         print(
