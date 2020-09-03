@@ -162,19 +162,31 @@ class pwrGenClient(object):
                     }
         # get the PLC 1 state:
         if self.plc1.connected:
-            s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
-            loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
-            loadDict['Airp'] = 1 if s1resp[1] == '04' else 0
+            try:
+                s1resp = re.findall('..', str(self.plc1.readMem())[-16:])
+                loadDict['Indu'] = 1 if s1resp[7] == '00' else 0
+                loadDict['Airp'] = 1 if s1resp[1] == '04' else 0
+            except Exception as err: 
+                print("PLC1[%s] data read error:\n%s" %(PLC1_IP, err))
+                self.plc1.connected = False
         # get PLC 2 state:
         if self.plc2.connected:
-            loadDict['Resi'] = 0 if self.plc2.getMem('qx0.2') else 1
-            loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0') else 0
+            try:
+                loadDict['Resi'] = 0 if self.plc2.getMem('qx0.2') else 1
+                loadDict['Stat'] = 1 if self.plc2.getMem('qx0.0') else 0
+            except Exception as err:
+                print("PLC2[%s] data read error:\n%s" %(PLC2_IP, err))
+                self.plc2.connected = False
         # get PLC 3 state
         if self.plc3.connected:
-            s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
-            loadDict['TrkA'] = 1 if s3resp[1] == '04' else 0
-            loadDict['TrkB'] = 1 if s3resp[2] == '10' else 0
-            loadDict['City'] = 1 if s3resp[7] == '00' else 0
+            try:
+                s3resp = re.findall('..', str(self.plc3.readMem())[-16:])
+                loadDict['TrkA'] = 1 if s3resp[1] == '04' else 0
+                loadDict['TrkB'] = 1 if s3resp[2] == '10' else 0
+                loadDict['City'] = 1 if s3resp[7] == '00' else 0
+            except Exception as err:
+                print("PLC3[%s] data read error:\n%s" %(PLC3_IP, err))
+                self.plc3.connected = False
         self.stateMgr.updateLoadPlcState(loadDict)       
 
 #--------------------------------------------------------------------------
@@ -238,7 +250,7 @@ class pwrGenClient(object):
 
         msgStr = "50.00:00.00:red:red:red:red:off:off"
         self.serialComm.write(msgStr.encode('utf-8'))
-        genDict = {'Freq': '50.00',
+        genDict = {'Freq': '52.00',
                    'Volt': '00.00',
                    'Fled': 'red',
                    'Vled': 'red',
