@@ -29,8 +29,14 @@
     cmd [Y/N]. If we want to stop the bgprogram, the bgProgramRcd.txt file will 
     be removed.
 
-    For windows system platform need to install lib: pip install psutil. Windows 
+    For Windows system platform need to install lib: pip install psutil. Windows 
     platform can not use <os.kill(pid, 0)>
+
+    For Linux system platform, when running the program need to conside the sudo 
+    permission situion. Better to use sudo python BgCtrl.py: 
+    - python3 bgProgram.py  + python 3 BgCtrl.py => work
+    - python3 bgProgram.py  + sudo python 3 BgCtrl.py => work
+    - sudo python3 bgProgram.py  + python 3 BgCtrl.py => not work
 """
 
 import os
