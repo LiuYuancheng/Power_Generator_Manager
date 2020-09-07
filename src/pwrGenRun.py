@@ -54,6 +54,7 @@ class CommThread(threading.Thread):
                 try:
                     reuslt = self.getResp(msgStr)
                     self.lastRespDict[msgTag] = reuslt
+                    print("xxxxxxxxxxx %s" %msgTag)
                 except Exception as err:
                     print("Error: the server part has no response.")
                     print("Exception: %s" %str(err))
@@ -63,7 +64,9 @@ class CommThread(threading.Thread):
 #-----------------------------------------------------------------------------
     def clearQ(self):
         while not self.cmdQ.empty():
-            self.cmdQ.get() 
+            print(" removed one element")
+            self.cmdQ.get()
+        print("All element removed")
 
 #-----------------------------------------------------------------------------
     def appendMsg(self, msgTag, msgStr):
@@ -298,6 +301,7 @@ class AppFrame(wx.Frame):
             # msgTag: msgStr
             'Login' : json.dumps({'Cmd': 'Get', 'Parm': 'Con'}),
             'Load'  : json.dumps({'Cmd': 'Get', 'Parm': 'Load'}),
+            'Gen'   : json.dumps({'Cmd': 'Get', 'Parm': 'Gen'}),
             'SetGen': json.dumps({'Cmd': 'SetGen', 'Parm': parm}),
             'SetPLC': json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
         }
@@ -313,16 +317,20 @@ class AppFrame(wx.Frame):
         """
         respDict = self.clieComThread.getLastCmdState()
         for (key, result) in respDict.items():
+
+            if result is None and self.reConCount == 0:
+                # not connected we need to reconnect.
+                self.reConCount = 1
+                print(">>>> Disconnected! try do re-connection.")
+                return
             if key == 'Login':
                 self.setConnLED(result)
-                if result is None and self.reConCount == 0:
-                    # not connected we need to reconnect.
-                    self.reConCount = 1
             elif key == 'Load':
                 self.setLoadsLED(result)
             elif key == 'Gen':
                 self.SetGensLED(result)
                 if gv.iDisFrame and gv.iPerGImgPnl:
+                    print()
                     gv.iDisFrame.updateData(result)
             elif key  == 'SetGen':
                 self.SetGensLED(result)
@@ -476,8 +484,9 @@ class AppFrame(wx.Frame):
                 gv.iPumpImgPnl.updateDisplay()
 
             if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
-                self.lastPeriodicTime['UI'] = now
+                self.lastPeriodicTime['State'] = now
                 self.connectRsp()
+
             if now - self.lastPeriodicTime['Data'] >= 4*gv.iUpdateRate:
                 self.lastPeriodicTime['Data'] = now
                 if self.reConCount == 0:
