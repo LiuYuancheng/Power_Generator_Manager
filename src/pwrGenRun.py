@@ -26,7 +26,7 @@ import pwrGenPanel as pl
 UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
 CMD_QSZ = 10    # communication cmd queue size.
-RECON_T = 20    # Re-connect time interval count.
+RECON_T = 10    # Re-connect time interval count.
 TEST_MD = True
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
@@ -46,6 +46,7 @@ class CommThread(threading.Thread):
         self.terminate = False
         self.lastRespDict = {}     # last server response.
 
+#-----------------------------------------------------------------------------
     def run(self):
         while not self.terminate:
             if not self.cmdQ.empty() and not self.sendLock:
@@ -59,19 +60,26 @@ class CommThread(threading.Thread):
             time.sleep(self.updateIntv)
         print("Communication thread end.")
 
+#-----------------------------------------------------------------------------
     def clearQ(self):
         while not self.cmdQ.empty():
             self.cmdQ.get() 
 
+#-----------------------------------------------------------------------------
     def appendMsg(self, msgTag, msgStr):
         if self.cmdQ.full(): return False
         self.cmdQ.put((msgTag, msgStr))
         return True
 
-    def getLastCmdState(self, msgTag):
-        state = self.lastRespDict[msgTag] if msgTag in self.lastRespDict.keys() else None
-        return state
+#-----------------------------------------------------------------------------
+    def getLastCmdState(self):
+        self.sendLock = True
+        rtDict = self.lastRespDict.copy()
+        self.lastRespDict = {}  # reset the cmd dict.
+        self.sendLock = False
+        return rtDict
 
+#-----------------------------------------------------------------------------
     def getResp(self, msgStr, Qtask=False):
         if not Qtask: self.sendLock = True    # Set the send lock.
         respStr = None
@@ -82,7 +90,9 @@ class CommThread(threading.Thread):
         if not Qtask: self.sendLock = False   # Release send lock.
         return respStr
 
+#-----------------------------------------------------------------------------
     def stop(self):
+        self.terminate = True
         self.connector.sendMsg(b'logout', resp=False)
 
 #-----------------------------------------------------------------------------
@@ -99,20 +109,21 @@ class AppFrame(wx.Frame):
         self.SetSizer(self._buildUISizer())
         self.SetTransparent(self.alphaValue)
         self.clieComThread = CommThread(self, 0, "client thread")
+        self.clieComThread.start()
         self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         # Set the periodic call back
-        self.lastPeriodicTime = { 'UI':time.time(), 'Data':time.time()}
+        self.lastPeriodicTime = { 'UI':time.time(), 'State': time.time(),'Data':time.time()}
         self.timer = wx.Timer(self)
         self.updateLock = False
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
         # login to the raspberry PI and fetch the running state.
         # Fetch the connection state from raspberry PI.
-        self.connectRsp('Login')
+        self.connectReq('Login')
         # Fetch the load state from the raspberry PI.
-        self.connectRsp('Load')
+        # self.connectRsp('Load')
         # Fetch the generator state from the raspberry PI.
-        self.connectRsp('Gen')
+        # self.connectRsp('Gen')
         # Added the state bar.
         self.statusbar = self.CreateStatusBar()
         self.Bind(wx.EVT_CLOSE, self.onClose)
@@ -274,10 +285,53 @@ class AppFrame(wx.Frame):
         return uSizer
 
 #-----------------------------------------------------------------------------
-    def connectRsp(self, evnt, parm=None):
+    def connectReq(self, req, parm=None):
+        """ Add the connection control request to the communicator.
+        Args:
+            req ([type]): [description]
+            parm ([type], optional): [description]. Defaults to None.
+
+        Returns:
+            [type]: [description]
+        """
+        cmdDict = {
+            # msgTag: msgStr
+            'Login' : json.dumps({'Cmd': 'Get', 'Parm': 'Con'}),
+            'Load'  : json.dumps({'Cmd': 'Get', 'Parm': 'Load'}),
+            'SetGen': json.dumps({'Cmd': 'SetGen', 'Parm': parm}),
+            'SetPLC': json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
+        }
+        if req in cmdDict.keys():
+            self.clieComThread.appendMsg(req, cmdDict[req])
+        else:
+            self.statusbar.SetStatusText("Can not handle the user action: %s" %str(req))
+
+#-----------------------------------------------------------------------------
+    def connectRsp(self):
         """ Try to connect to the raspberry pi and send cmd based on the 
             evnt setting.
         """
+        respDict = self.clieComThread.getLastCmdState()
+        for (key, result) in respDict.items():
+            if key == 'Login':
+                self.setConnLED(result)
+                if result is None and self.reConCount == 0:
+                    # not connected we need to reconnect.
+                    self.reConCount = 1
+            elif key == 'Load':
+                self.setLoadsLED(result)
+            elif key == 'Gen':
+                self.SetGensLED(result)
+                if gv.iDisFrame and gv.iPerGImgPnl:
+                    gv.iDisFrame.updateData(result)
+            elif key  == 'SetGen':
+                self.SetGensLED(result)
+            elif key == 'SetPLC':
+                self.SetGensLED(result)
+
+
+        return 
+        # ---------------------------------------------------
         if evnt == 'Login':
             # Log in and get the connection state.
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
@@ -408,7 +462,7 @@ class AppFrame(wx.Frame):
         """ Handle user's pump speed change action from the dropdown menu."""
         msgStr = self.pumpSPCB.GetValue()
         print("AppFrame: Set pump speed to %s " % msgStr)
-        self.connectRsp('SetPLC', parm={'Pspd': msgStr})
+        self.connectReq('SetPLC', parm={'Pspd': msgStr})
 
 #--AppFrame---------------------------------------------------------------------
     def periodic(self, event):
@@ -420,19 +474,28 @@ class AppFrame(wx.Frame):
                 self.lastPeriodicTime['UI'] = now
                 gv.iMotoImgPnl.updateDisplay()
                 gv.iPumpImgPnl.updateDisplay()
-            if now - self.lastPeriodicTime['Data'] >= 2*gv.iUpdateRate:
+
+            if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
+                self.lastPeriodicTime['UI'] = now
+                self.connectRsp()
+            if now - self.lastPeriodicTime['Data'] >= 4*gv.iUpdateRate:
                 self.lastPeriodicTime['Data'] = now
                 if self.reConCount == 0:
-                    self.connectRsp('Load')
-                    self.connectRsp('Gen')
+                    self.connectReq('Load')
+                    self.connectReq('Gen')
                 else:
                     self.reConCount += 1
+                    print(RECON_T-self.reConCount)
+                if self.reConCount == RECON_T:
+                    self.reConCount = 1
+                    self.clieComThread.clearQ()
+                    self.connectReq('Login')
 
-                
                 if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
 #-----------------------------------------------------------------------------
     def onClose(self, event):
+        self.clieComThread.stop()
         self.timer.Stop()
         self.Destroy()
 

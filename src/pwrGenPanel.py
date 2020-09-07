@@ -416,8 +416,8 @@ class PanelDebug(wx.Panel):
         """ Send the setting to the Raspberry PI"""
         print('Send Gen setting debug message')
         genDict = {key:self.genFieldlList[key].GetValue() for key in self.genFieldlList.keys()}
-        gv.iMainFrame.connectRsp('SetGen', parm=genDict)
+        gv.iMainFrame.connectReq('SetGen', parm=genDict)
 
         print('Send PLC setting deubg message')
         plcDict = {key:self.plcFieldList[key].GetValue() for key in self.plcFieldList.keys()}
-        gv.iMainFrame.connectRsp('SetPLC', parm=plcDict)
+        gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
