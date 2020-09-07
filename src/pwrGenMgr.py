@@ -97,7 +97,7 @@ class pwrGenClient(object):
                     'Parm': {}}
         """
         if self.debug: print("Incomming message: %s" %str(msg))
-        if msg == b'' or msg == b'end': return None # get at program terminate signal.
+        if msg == b'' or msg == b'end' or msg == b'logout': return None  # get at program terminate signal.
         if msg.decode('utf-8') == 'A;1':
             _thread.start_new_thread( self.startAttack, ("Thread-1", ) )
             return None

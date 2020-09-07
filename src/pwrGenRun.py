@@ -16,6 +16,8 @@ import time
 import json
 import wx
 import wx.gizmos as gizmos
+import threading
+from queue import Queue 
 
 import udpCom
 import pwrGenGobal as gv
@@ -23,8 +25,65 @@ import pwrGenPanel as pl
 
 UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
+CMD_QSZ = 10    # communication cmd queue size.
+RECON_T = 20    # Re-connect time interval count.
 TEST_MD = True
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+class CommThread(threading.Thread):
+    """ Thread to test the UDP server/insert the tcp server in other program.""" 
+    def __init__(self, parent, threadID, name, updateIntv=0.5):
+        threading.Thread.__init__(self)
+        self.threadName = name
+        self.parent = parent
+        self.updateIntv = updateIntv    # dequeue update interval
+        self.cmdQ = Queue(maxsize = CMD_QSZ)
+        self.sendLock = False
+        # Set the raspberry pi UDP connector.
+        self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
+        self.terminate = False
+        self.lastRespDict = {}     # last server response.
+
+    def run(self):
+        while not self.terminate:
+            if not self.cmdQ.empty() and not self.sendLock:
+                (msgTag, msgStr) = self.cmdQ.get()
+                try:
+                    reuslt = self.getResp(msgStr)
+                    self.lastRespDict[msgTag] = reuslt
+                except Exception as err:
+                    print("Error: the server part has no response.")
+                    print("Exception: %s" %str(err))
+            time.sleep(self.updateIntv)
+        print("Communication thread end.")
+
+    def clearQ(self):
+        while not self.cmdQ.empty():
+            self.cmdQ.get() 
+
+    def appendMsg(self, msgTag, msgStr):
+        if self.cmdQ.full(): return False
+        self.cmdQ.put((msgTag, msgStr))
+        return True
+
+    def getLastCmdState(self, msgTag):
+        state = self.lastRespDict[msgTag] if msgTag in self.lastRespDict.keys() else None
+        return state
+
+    def getResp(self, msgStr, Qtask=False):
+        if not Qtask: self.sendLock = True    # Set the send lock.
+        respStr = None
+        try:
+             respStr = self.connector.sendMsg(msgStr, resp=True)
+        except:
+            print("Error:\n ----> Timeout\t: the server part has no response.")
+        if not Qtask: self.sendLock = False   # Release send lock.
+        return respStr
+
+    def stop(self):
+        self.connector.sendMsg(b'logout', resp=False)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -39,8 +98,8 @@ class AppFrame(wx.Frame):
         self.alphaValue = 200
         self.SetSizer(self._buildUISizer())
         self.SetTransparent(self.alphaValue)
-        # Set the raspberry pi UDP connector.
-        self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
+        self.clieComThread = CommThread(self, 0, "client thread")
+        self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         # Set the periodic call back
         self.lastPeriodicTime = { 'UI':time.time(), 'Data':time.time()}
         self.timer = wx.Timer(self)
@@ -58,6 +117,7 @@ class AppFrame(wx.Frame):
         self.statusbar = self.CreateStatusBar()
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.Refresh(False)
+        
         print("AppFrame init finished.")
 
 #--AppFrame---------------------------------------------------------------------
@@ -221,8 +281,11 @@ class AppFrame(wx.Frame):
         if evnt == 'Login':
             # Log in and get the connection state.
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
-            result = self.connector.sendMsg(msgStr, resp=True)
+            result = self.clieComThread.getResp(msgStr)
             self.setConnLED(result)
+            if result is None and self.reConCount == 0:
+                # not connected we need to reconnect.
+                self.reConCount = 1
         elif evnt == 'Load':
             msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Load'})
             result = self.connector.sendMsg(msgStr, resp=True)
@@ -359,8 +422,13 @@ class AppFrame(wx.Frame):
                 gv.iPumpImgPnl.updateDisplay()
             if now - self.lastPeriodicTime['Data'] >= 2*gv.iUpdateRate:
                 self.lastPeriodicTime['Data'] = now
-                self.connectRsp('Load')
-                self.connectRsp('Gen')
+                if self.reConCount == 0:
+                    self.connectRsp('Load')
+                    self.connectRsp('Gen')
+                else:
+                    self.reConCount += 1
+
+                
                 if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
 #-----------------------------------------------------------------------------
