@@ -259,7 +259,7 @@ class AppFrame(wx.Frame):
         self.pumpLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         vbox.Add(self.pumpLedBt, flag=wx.CENTER, border=2)
         vbox.AddSpacer(10)
-        vbox.Add(wx.StaticText(self, label="PumpSpeed"),
+        vbox.Add(wx.StaticText(self, label=" PumpSpeed "),
                  flag=wx.CENTER, border=2)
         vbox.AddSpacer(10)
         self.pumpSPCB = wx.ComboBox(
@@ -335,58 +335,24 @@ class AppFrame(wx.Frame):
         """
         respDict = self.clieComThread.getLastCmdState()
         for (key, result) in respDict.items():
-
             if result is None and self.reConCount == 0:
-                # not connected we need to reconnect.
-                self.reConCount = 1
+                self.reConCount = 1 # not connected we need to set reconnect flag.
                 print(">>>> Disconnected! try do re-connection.")
+                self.setConnLED(result)
                 return
             if key == 'Login':
                 self.setConnLED(result)
             elif key == 'Load':
                 self.setLoadsLED(result)
             elif key == 'Gen':
-                self.SetGensLED(result)
+                self.setGensLED(result)
                 if gv.iDisFrame and gv.iPerGImgPnl:
-                    print()
                     gv.iDisFrame.updateData(result)
             elif key  == 'SetGen':
-                self.SetGensLED(result)
+                self.setGensLED(result)
             elif key == 'SetPLC':
-                self.SetGensLED(result)
-
-
+                self.setGensLED(result)
         return 
-        # ---------------------------------------------------
-        if evnt == 'Login':
-            # Log in and get the connection state.
-            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Con'})
-            result = self.clieComThread.getResp(msgStr)
-            self.setConnLED(result)
-            if result is None and self.reConCount == 0:
-                # not connected we need to reconnect.
-                self.reConCount = 1
-        elif evnt == 'Load':
-            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Load'})
-            result = self.connector.sendMsg(msgStr, resp=True)
-            self.setLoadsLED(result)
-        elif evnt == 'Gen':
-            msgStr = json.dumps({'Cmd': 'Get', 'Parm': 'Gen'})
-            result = self.connector.sendMsg(msgStr, resp=True)
-            self.SetGensLED(result)
-            # update the generator 
-            if gv.iDisFrame and gv.iPerGImgPnl:
-                gv.iDisFrame.updateData(result)
-        elif evnt == 'SetGen':
-            msgStr = json.dumps({'Cmd': 'SetGen', 'Parm': parm})
-            result = self.connector.sendMsg(msgStr, resp=True)
-            self.SetGensLED(result)
-        elif evnt == 'SetPLC':
-            msgStr = json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
-            result = self.connector.sendMsg(msgStr, resp=True)
-            self.SetGensLED(result)
-        else:
-            self.statusbar.SetStatusText("Can not handle the user action: %s" %str(evnt))
 
 #-----------------------------------------------------------------------------
     def setConnLED(self, resultStr):
@@ -419,16 +385,14 @@ class AppFrame(wx.Frame):
         """ Set the power loads LED state."""
         if resultStr is None:
             print("setLoadsLED: no response")
-            return None
-        resultDict = json.loads(resultStr)
-        self.loadPanel.setLoadIndicator(resultDict)
-        return True
+            return
+        self.loadPanel.setLoadIndicator(json.loads(resultStr))
 
 #-----------------------------------------------------------------------------
-    def SetGensLED(self, resultStr):
+    def setGensLED(self, resultStr):
         """ Set all the generator's LED and indiator's state."""
         if resultStr is None:
-            print("SetGensLED: no response")
+            print("setGensLED: no response")
         else:
             #print(resultStr)
             colorDict = {'green': 'Green', 'amber': 'Yellow', 'red': 'Red',
@@ -499,6 +463,7 @@ class AppFrame(wx.Frame):
             self.lastPeriodicTime['UI'] = now
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
+            if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
         if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
             self.lastPeriodicTime['State'] = now
@@ -516,9 +481,7 @@ class AppFrame(wx.Frame):
                 self.reConCount = 1
                 self.clieComThread.clearQ()
                 self.connectReq('Login')
-
-            if gv.iDisFrame: gv.iDisFrame.updateDisplay()
-
+            
 #-----------------------------------------------------------------------------
     def onClose(self, event):
         self.clieComThread.stop()
@@ -533,5 +496,7 @@ class MyApp(wx.App):
         gv.iMainFrame.Show(True)
         return True
 
-app = MyApp(0)
-app.MainLoop()
+#-----------------------------------------------------------------------------
+if __name__ == '__main__':
+    app = MyApp(0)
+    app.MainLoop()
