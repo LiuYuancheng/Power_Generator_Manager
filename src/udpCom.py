@@ -45,7 +45,7 @@ class udpClient(object):
             except ConnectionResetError as error:
                 print("udpClient: Can not connect to the server!")
                 print(error)
-                self.disconnect()
+                # self.disconnect() not need to diconnect if we want to do reconnect.
                 return None
         return None
 

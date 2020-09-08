@@ -2,8 +2,8 @@
 #-----------------------------------------------------------------------------
 # Name:        pwGenRun.py
 #
-# Purpose:     This module is used to create the control panel to connect to the
-#              Raspberry PI generator control by UDP.
+# Purpose:     This module is used to create a control panel to connect to the
+#              Raspberry PI generator controller by UDP(port:5005).
 #
 # Author:      Yuancheng Liu
 #
@@ -14,16 +14,15 @@
 
 import time
 import json
+import threading
 import wx
 import wx.gizmos as gizmos
-import threading
 from queue import Queue 
 
 import udpCom
 import pwrGenGobal as gv
 import pwrGenPanel as pl
 
-UDP_PORT = 5005
 PERIODIC = 250  # main UI loop call back period.(ms)
 CMD_QSZ = 10    # communication cmd queue size.
 RECON_T = 10    # Re-connect time interval count.
@@ -33,50 +32,67 @@ RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class CommThread(threading.Thread):
-    """ Thread to test the UDP server/insert the tcp server in other program.""" 
+    """ Thread run parellel with the main UI thread to loop communicating with 
+        <pwrGenMgr> running on Raspberry PI.  
+    """
     def __init__(self, parent, threadID, name, updateIntv=0.5):
         threading.Thread.__init__(self)
-        self.threadName = name
         self.parent = parent
+        self.threadName = name
         self.updateIntv = updateIntv    # dequeue update interval
-        self.cmdQ = Queue(maxsize = CMD_QSZ)
-        self.sendLock = False
+        self.cmdQ = Queue(maxsize=CMD_QSZ)
         # Set the raspberry pi UDP connector.
-        self.connector = udpCom.udpClient((RSP_IP, UDP_PORT))
+        self.connector = udpCom.udpClient((RSP_IP, gv.gUdpPort)) #5005
+        self.sendLock = False   # locker flag for sending mutual exclusion.
         self.terminate = False
-        self.lastRespDict = {}     # last server response.
+        # Last server response dict for different msg tag.
+        self.lastRespDict = {}
 
 #-----------------------------------------------------------------------------
     def run(self):
+        """ Main message sending loop. If there is any message in the queue, pop
+            the message and send to the client.
+        """
         while not self.terminate:
             if not self.cmdQ.empty() and not self.sendLock:
                 (msgTag, msgStr) = self.cmdQ.get()
                 try:
-                    reuslt = self.getResp(msgStr)
+                    reuslt = self.getResp(msgStr, Qtask=True)
                     self.lastRespDict[msgTag] = reuslt
-                    print("xxxxxxxxxxx %s" %msgTag)
                 except Exception as err:
                     print("Error: the server part has no response.")
-                    print("Exception: %s" %str(err))
+                    print("Exception: %s" % str(err))
+            # Sleep a time interval to control the send frequence.
             time.sleep(self.updateIntv)
         print("Communication thread end.")
 
 #-----------------------------------------------------------------------------
     def clearQ(self):
+        """ clear all the element in the cmd queue. """
         while not self.cmdQ.empty():
-            print(" removed one element")
             self.cmdQ.get()
-        print("All element removed")
+        print("All elements in the cmd queue are removed.")
 
 #-----------------------------------------------------------------------------
     def appendMsg(self, msgTag, msgStr):
+        """ Add message in the cmd queue.
+        Args:
+            msgTag ([str]): message tag.
+            msgStr ([str]): message json string.
+        Returns:
+            [bool]: return true if added successfully, cmd queue is not full.
+        """
         if self.cmdQ.full(): return False
         self.cmdQ.put((msgTag, msgStr))
         return True
 
 #-----------------------------------------------------------------------------
     def getLastCmdState(self):
-        self.sendLock = True
+        """ Return the cmd state store dict.
+        Returns:
+            [dict]: a copy of Cmd response state dict..
+        """
+        self.sendLock = True    # lock the message communication to avoid data change.
         rtDict = self.lastRespDict.copy()
         self.lastRespDict = {}  # reset the cmd dict.
         self.sendLock = False
@@ -84,12 +100,20 @@ class CommThread(threading.Thread):
 
 #-----------------------------------------------------------------------------
     def getResp(self, msgStr, Qtask=False):
+        """ Send message to UDP server and get response.
+        Args:
+            msgStr ([str]): message string.
+            Qtask (bool, optional): Identifier whether the function is called from
+                queue task, lock the send if it is not a queue task. Defaults to False.
+        Returns:
+            [str]: [reply message or None]
+        """
         if not Qtask: self.sendLock = True    # Set the send lock.
         respStr = None
         try:
              respStr = self.connector.sendMsg(msgStr, resp=True)
-        except:
-            print("Error:\n ----> Timeout\t: the server part has no response.")
+        except Exception as err:
+            print("Error:\n ----> Timeout\t: the server part has no response. %s" %err)
         if not Qtask: self.sendLock = False   # Release send lock.
         return respStr
 
@@ -107,65 +131,58 @@ class AppFrame(wx.Frame):
         wx.Frame.__init__(self, parent, id, title, size=(800, 340))
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
         self.SetIcon(wx.Icon(gv.ICO_PATH))
-        # build the UI.
-        self.alphaValue = 200
+        # Build the UI.
         self.SetSizer(self._buildUISizer())
-        self.SetTransparent(self.alphaValue)
+        self.SetTransparent(gv.gAlphaValue)
+        # Init the communicator thread.
+        self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         self.clieComThread = CommThread(self, 0, "client thread")
         self.clieComThread.start()
-        self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         # Set the periodic call back
-        self.lastPeriodicTime = { 'UI':time.time(), 'State': time.time(),'Data':time.time()}
+        self.lastPeriodicTime = {'UI': time.time(), 'State': time.time(), 'Data': time.time()}
         self.timer = wx.Timer(self)
-        self.updateLock = False
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
-        # login to the raspberry PI and fetch the running state.
-        # Fetch the connection state from raspberry PI.
+        # login to the raspberry PI and fetch the connection state
         self.connectReq('Login')
-        # Fetch the load state from the raspberry PI.
-        # self.connectRsp('Load')
-        # Fetch the generator state from the raspberry PI.
-        # self.connectRsp('Gen')
         # Added the state bar.
         self.statusbar = self.CreateStatusBar()
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.Refresh(False)
-        
         print("AppFrame init finished.")
 
 #--AppFrame---------------------------------------------------------------------
     def _buildUISizer(self):
         """ Build the main UI Sizer. """
-        flagsR = wx.RIGHT
+        flags = wx.LEFT
         sizerAll = wx.BoxSizer(wx.VERTICAL)
         # Connection state display area.
         sizerAll.AddSpacer(5)
-        sizerAll.Add(self._buildConnSizer(), flag=flagsR, border=2)
-        sizerAll.AddSpacer(5)
+        sizerAll.Add(self._buildConnSizer(), flag=flags, border=2)        
+        sizerAll.AddSpacer(5)        
         sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(800, -1),
-                                   style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
+                                   style=wx.LI_HORIZONTAL), flag=flags, border=2)
         sizerAll.AddSpacer(5)
 
         sizerInfo = wx.BoxSizer(wx.HORIZONTAL)
         # System load display panel.
         sizerInfo.AddSpacer(5)
         self.loadPanel = pl.PanelLoad(self)
-        sizerInfo.Add(self.loadPanel, flag=flagsR, border=2)
+        sizerInfo.Add(self.loadPanel, flag=flags, border=2)
         sizerInfo.AddSpacer(5)
         sizerInfo.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 200),
-                                    style=wx.LI_VERTICAL), flag=flagsR, border=2)
+                                    style=wx.LI_VERTICAL), flag=flags, border=2)
         sizerInfo.AddSpacer(5)
         # Generator information display panel.
         genSizer = wx.BoxSizer(wx.VERTICAL)
         genSizer.Add(wx.StaticText(
-            self, -1, 'Generator Information:'), flag=flagsR, border=2)
+            self, -1, 'Generator Information:'), flag=flags, border=2)
         genSizer.AddSpacer(10)
         # - add infomation display panel.
-        genSizer.Add(self._buildGenInfoSizer(), flag=flagsR, border=2)
+        genSizer.Add(self._buildGenInfoSizer(), flag=flags, border=2)
         genSizer.AddSpacer(5)
         genSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(600, -1),
-                                   style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
+                                   style=wx.LI_HORIZONTAL), flag=flags, border=2)
         genSizer.AddSpacer(5)
         # - add the moto display panel.
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -174,42 +191,43 @@ class AppFrame(wx.Frame):
         mSizer.Add(self.MotoLedBt, flag=wx.CENTER, border=2)
         mSizer.AddSpacer(5)
         gv.iMotoImgPnl = pl.PanelMoto(self)
-        mSizer.Add(gv.iMotoImgPnl, flag=flagsR, border=2)
+        mSizer.Add(gv.iMotoImgPnl, flag=flags, border=2)
         # - add the split line
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
-                                 style=wx.LI_VERTICAL), flag=flagsR, border=2)
+                                 style=wx.LI_VERTICAL), flag=flags, border=2)
         mSizer.AddSpacer(5)
         # - add the pump display panel.
         mSizer.Add(self._buildPumpCtrlSizer(), flag=wx.CENTER, border=2)
         mSizer.AddSpacer(10)
         gv.iPumpImgPnl = pl.PanelPump(self)
-        mSizer.Add(gv.iPumpImgPnl, flag=flagsR, border=2)
+        mSizer.Add(gv.iPumpImgPnl, flag=flags, border=2)
         # - add the split line
         mSizer.AddSpacer(5)
         mSizer.Add(wx.StaticLine(self, wx.ID_ANY, size=(-1, 140),
-                                 style=wx.LI_VERTICAL), flag=flagsR, border=2)
+                                 style=wx.LI_VERTICAL), flag=flags, border=2)
         mSizer.AddSpacer(5)
         # Added the system debug and control panel.
         self.sysPnl = pl.PanelCtrl(self)
-        mSizer.Add(self.sysPnl, flag=flagsR, border=2)
-        genSizer.Add(mSizer, flag=flagsR, border=2)
+        mSizer.Add(self.sysPnl, flag=flags, border=2)
+        genSizer.Add(mSizer, flag=flags, border=2)
 
-        sizerInfo.Add(genSizer, flag=flagsR, border=2)
-        sizerAll.Add(sizerInfo, flag=flagsR, border=2)
+        sizerInfo.Add(genSizer, flag=flags, border=2)
+        sizerAll.Add(sizerInfo, flag=flags, border=2)
         # - add the split line
         sizerAll.AddSpacer(5)
         sizerAll.Add(wx.StaticLine(self, wx.ID_ANY, size=(800, -1),
-                                   style=wx.LI_HORIZONTAL), flag=flagsR, border=2)
+                                   style=wx.LI_HORIZONTAL), flag=flags, border=2)
         sizerAll.AddSpacer(5)
         return sizerAll
 
 #-----------------------------------------------------------------------------
     def _buildConnSizer(self):
-        """ build the components connection information display panel"""
+        """ build the GridSizer with components(button indicator) to show the 
+            connection information.
+        """
         sizer = wx.GridSizer(1, 7, 5, 5)
-        sizer.Add(wx.StaticText(self, -1, 'Connection State : '),
-                  flag=wx.RIGHT)
+        sizer.Add(wx.StaticText(self, -1, 'Connection State : '))
         sizer.AddSpacer(5)
         # Raspberry PI connection.
         self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
@@ -256,34 +274,34 @@ class AppFrame(wx.Frame):
         """ Build the generator information display panel."""
         # LED area
         uSizer = wx.BoxSizer(wx.HORIZONTAL)
-        flagsR = wx.RIGHT
+        flags = wx.CENTER
         # Frequence LED
         self.feqLedBt = wx.Button(self, label='Frequency', size=(80, 30))
         self.feqLedBt.SetBackgroundColour(wx.Colour('GRAY'))
-        uSizer.Add(self.feqLedBt, flag=flagsR, border=2)
+        uSizer.Add(self.feqLedBt, flag=flags, border=2)
         self.feqLedDis = gizmos.LEDNumberCtrl(
             self, -1, size=(80, 35), style=gizmos.LED_ALIGN_CENTER)
-        uSizer.Add(self.feqLedDis, flag=flagsR, border=2)
+        uSizer.Add(self.feqLedDis, flag=flags, border=2)
         uSizer.AddSpacer(10)
         # Voltage LED
         self.volLedBt = wx.Button(self, label='Voltage', size=(80, 30))
         self.volLedBt.SetBackgroundColour(wx.Colour('GRAY'))
-        uSizer.Add(self.volLedBt, flag=flagsR, border=2)
+        uSizer.Add(self.volLedBt, flag=flags, border=2)
         self.volLedDis = gizmos.LEDNumberCtrl(
             self, -1, size=(80, 35), style=gizmos.LED_ALIGN_CENTER)
-        uSizer.Add(self.volLedDis, flag=flagsR, border=2)
+        uSizer.Add(self.volLedDis, flag=flags, border=2)
         uSizer.AddSpacer(10)
         # Smoke LED
         self.smkIdc = wx.Button(
             self, label='Smoke [OFF]', size=(100, 30), name='smoke')
         self.smkIdc.SetBackgroundColour(wx.Colour('GRAY'))
-        uSizer.Add(self.smkIdc, flag=flagsR, border=2)
+        uSizer.Add(self.smkIdc, flag=flags, border=2)
         uSizer.AddSpacer(10)
         # Siren LED
         self.sirenIdc = wx.Button(
             self, label='Siren [OFF]', size=(100, 30), name='smoke')
         self.sirenIdc.SetBackgroundColour(wx.Colour('GRAY'))
-        uSizer.Add(self.sirenIdc, flag=flagsR, border=2)
+        uSizer.Add(self.sirenIdc, flag=flags, border=2)
         uSizer.AddSpacer(10)
         return uSizer
 
@@ -476,31 +494,30 @@ class AppFrame(wx.Frame):
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
-        if not self.updateLock:
-            if now - self.lastPeriodicTime['UI'] >= gv.iUpdateRate:
-                #print("main frame update at %s" % str(now))
-                self.lastPeriodicTime['UI'] = now
-                gv.iMotoImgPnl.updateDisplay()
-                gv.iPumpImgPnl.updateDisplay()
+        if now - self.lastPeriodicTime['UI'] >= gv.iUpdateRate:
+            #print("main frame update at %s" % str(now))
+            self.lastPeriodicTime['UI'] = now
+            gv.iMotoImgPnl.updateDisplay()
+            gv.iPumpImgPnl.updateDisplay()
 
-            if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
-                self.lastPeriodicTime['State'] = now
-                self.connectRsp()
+        if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
+            self.lastPeriodicTime['State'] = now
+            self.connectRsp()
 
-            if now - self.lastPeriodicTime['Data'] >= 4*gv.iUpdateRate:
-                self.lastPeriodicTime['Data'] = now
-                if self.reConCount == 0:
-                    self.connectReq('Load')
-                    self.connectReq('Gen')
-                else:
-                    self.reConCount += 1
-                    print(RECON_T-self.reConCount)
-                if self.reConCount == RECON_T:
-                    self.reConCount = 1
-                    self.clieComThread.clearQ()
-                    self.connectReq('Login')
+        if now - self.lastPeriodicTime['Data'] >= 4*gv.iUpdateRate:
+            self.lastPeriodicTime['Data'] = now
+            if self.reConCount == 0:
+                self.connectReq('Load')
+                self.connectReq('Gen')
+            else:
+                self.reConCount += 1
+                print(RECON_T-self.reConCount)
+            if self.reConCount == RECON_T:
+                self.reConCount = 1
+                self.clieComThread.clearQ()
+                self.connectReq('Login')
 
-                if gv.iDisFrame: gv.iDisFrame.updateDisplay()
+            if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
 #-----------------------------------------------------------------------------
     def onClose(self, event):

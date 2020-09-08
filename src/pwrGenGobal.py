@@ -26,8 +26,14 @@ SMKOIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke_on.png")  # smoke on image
 SMKFIMG_PATH = os.path.join(dirpath, IMG_FD, "smoke_off.png")  # smoke off image
 SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")  # siren on image
 
+#-------<GLOBAL VARIABLES (start with "g")>------------------------------------
+# VARIABLES are the built in data type.
+gUdpPort = 5005     # UDP communication port.
+gAlphaValue = 200   # transparent alphaValue.(0-255)
 
-#-------<GLOBAL PARAMTERS>-----------------------------------------------------
+
+#-------<GLOBAL INSTANCES (start with "i")>-----------------------------------------------------
+# INSTANCES are the object. 
 iCtrlPanel = None   # Control panel
 iDetailPanel = None # Debug and manually control panel.
 iMainFrame = None   # MainFrame.
