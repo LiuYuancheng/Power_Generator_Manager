@@ -238,3 +238,44 @@ if we run the background program with "sudo" permission, if we want to check we 
 
 ------
 
+**Problem**: Set auto run when start up on CentOs Linux7 in rc.local and cause the system can not boot up
+
+**OS Platform** : CentOs Linux7
+
+**Error Message**: The system hang during enter the system. 
+
+> A start job is running for /etc/rc.local Compatibility 
+
+**Type**: N.a 
+
+**Solution**:
+
+- Reboot the system, wait until the system selection page and press "e" to enter the grub mode. 
+
+- Some message will be show below: 
+
+  > root (hd0,0)
+  > kernel /vmlinuz-2.6.18-128.el5 ro root=LABEL=/ rhgb quiet
+  > initrd /initrd-2.6.18-128.el5.img
+
+  Move to line "kernel /vmlinuz-2.6.18-128.el5 ro root=LABEL=/ rhgb quiet
+  initrd /initrd-2.6.18-128.el5.img"  and add the word "single" behind "quiet"
+
+  > kernel /vmlinuz-2.6.18-128.el5 ro root=LABEL=/ rhgb **quiet**
+  > initrd /initrd-2.6.18-128.el5.img
+
+- Press the Ctrl+x to run the system under the config. Then type in the admin password to enter the system cmd line mode. 
+- cd to /etc/rc.d/ or vim /etc/rc.d/rc.local then removed all the line in the rc.local. Save the file and reboot the system. 
+
+**Related Reference**:
+
+https://blog.csdn.net/m0_38078650/article/details/101944002
+
+https://blog.csdn.net/freudlv/article/details/46549303
+
+https://blog.csdn.net/baobingji/article/details/85239527
+
+http://blog.ckeck.cn/?p=126
+
+------
+
