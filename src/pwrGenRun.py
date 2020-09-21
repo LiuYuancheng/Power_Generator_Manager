@@ -231,7 +231,7 @@ class AppFrame(wx.Frame):
         sizer.AddSpacer(5)
         # Raspberry PI connection.
         self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
-        self.rspLedBt.SetBackgroundColour(wx.Colour('Green'))
+        self.rspLedBt.SetBackgroundColour(wx.Colour('GRAY'))
         sizer.Add(self.rspLedBt)
         # Serial port connection led state.
         self.serialLedBt = wx.Button(self, label='COMM', size=(75, 30))
@@ -338,6 +338,7 @@ class AppFrame(wx.Frame):
             if result is None and self.reConCount == 0:
                 self.reConCount = 1 # not connected we need to set reconnect flag.
                 print(">>>> Disconnected! try do re-connection.")
+                self.statusbar.SetStatusText(">>>> Disconnected! try do re-connection.")
                 self.setConnLED(result)
                 return
             if key == 'Login':
@@ -476,7 +477,8 @@ class AppFrame(wx.Frame):
                 self.connectReq('Gen')
             else:
                 self.reConCount += 1
-                print(RECON_T-self.reConCount)
+                self.statusbar.SetStatusText(
+                    ">>>> Disconnected! try do re-connection in %s sec" % str(RECON_T-self.reConCount))
             if self.reConCount == RECON_T:
                 self.reConCount = 1
                 self.clieComThread.clearQ()

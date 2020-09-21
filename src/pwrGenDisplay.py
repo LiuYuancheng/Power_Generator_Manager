@@ -66,7 +66,7 @@ class GenDisplayFrame(wx.Frame):
         """ Close the window and reset the gv parameters."""
         gv.iPerGImgPnl = None
         self.Destroy()
-        gv.iDisFrame = None
+        #gv.iDisFrame = None
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------

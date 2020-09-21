@@ -12,7 +12,7 @@
 #-----------------------------------------------------------------------------
 import os
 
-dirpath = os.getcwd()
+dirpath = os.path.dirname(__file__)
 print("Current working directory is : %s" % dirpath)
 APP_NAME = 'Generator Mgr'
 

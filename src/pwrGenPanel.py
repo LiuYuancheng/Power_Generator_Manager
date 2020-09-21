@@ -272,12 +272,12 @@ class PanelCtrl(wx.Panel):
         ctSizer.Add(self.mainPwrBt, flag=flagsR, border=2)
         ctSizer.AddSpacer(3)
         
-        self.debugBt = wx.Button(self, label='Debug Panel >> ', size=(120, 30))
+        self.debugBt = wx.Button(self, label='Debug Panel >', size=(120, 30))
         self.debugBt.Bind(wx.EVT_BUTTON, self.showDebug)
         ctSizer.Add(self.debugBt, flag=flagsR, border=2)
         ctSizer.AddSpacer(3)
 
-        self.displayBt = wx.Button(self, label='Display Panel >> ', size=(120, 30))
+        self.displayBt = wx.Button(self, label='Display Panel >', size=(120, 30))
         self.displayBt.Bind(wx.EVT_BUTTON, self.showDisplay)
         ctSizer.Add(self.displayBt, flag=flagsR, border=2)        
 
@@ -298,7 +298,7 @@ class PanelCtrl(wx.Panel):
         if self.debugFrame == None:
             posF = gv.iMainFrame.GetPosition()
             self.debugFrame = wx.MiniFrame(gv.iMainFrame, -1, 'Debug Panel', pos=(
-                posF[0]+800, posF[1]), size=(240, 420), style=wx.DEFAULT_FRAME_STYLE)
+                posF[0]+800, posF[1]), size=(250, 500), style=wx.DEFAULT_FRAME_STYLE)
             gv.iDetailPanel = PanelDebug(self.debugFrame)
             self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
             self.debugFrame.Show()
@@ -307,6 +307,12 @@ class PanelCtrl(wx.Panel):
     def showDisplay(self, event):
         if gv.iDisFrame == None:
             gv.iDisFrame = gd.GenDisplayFrame(self, 410, 230)
+            self.displayBt.SetLabel('Display Panel X')
+        else:
+            gv.iDisFrame.onCloseWindow(None)
+            gv.iPerGImgPnl = None
+            gv.iDisFrame = None
+            self.displayBt.SetLabel('Display Panel >')
 
 #--PanelCtrl------------------------------------------------------------------
     def infoWinClose(self, event):
