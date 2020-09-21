@@ -459,18 +459,18 @@ class AppFrame(wx.Frame):
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
-        if now - self.lastPeriodicTime['UI'] >= gv.iUpdateRate:
+        if now - self.lastPeriodicTime['UI'] >= gv.gUpdateRate:
             #print("main frame update at %s" % str(now))
             self.lastPeriodicTime['UI'] = now
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
             if gv.iDisFrame: gv.iDisFrame.updateDisplay()
 
-        if now - self.lastPeriodicTime['State'] >= 2*gv.iUpdateRate:
+        if now - self.lastPeriodicTime['State'] >= 2*gv.gUpdateRate:
             self.lastPeriodicTime['State'] = now
             self.connectRsp()
 
-        if now - self.lastPeriodicTime['Data'] >= 4*gv.iUpdateRate:
+        if now - self.lastPeriodicTime['Data'] >= 4*gv.gUpdateRate:
             self.lastPeriodicTime['Data'] = now
             if self.reConCount == 0:
                 self.connectReq('Load')

@@ -179,7 +179,7 @@ class pwrGenLDisplay(wx.Frame):
         """ Call back every periodic time."""
         now = time.time()
         if not self.updateLock:
-            if now - self.lastPeriodicTime['Data'] >= 2*gv.iUpdateRate:
+            if now - self.lastPeriodicTime['Data'] >= 2*gv.gUpdateRate:
                 self.lastPeriodicTime['Data'] = now
                 self.connectRsp('Gen')
 
