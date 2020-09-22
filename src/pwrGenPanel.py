@@ -298,7 +298,7 @@ class PanelCtrl(wx.Panel):
         if self.debugFrame == None:
             posF = gv.iMainFrame.GetPosition()
             self.debugFrame = wx.MiniFrame(gv.iMainFrame, -1, 'Debug Panel', pos=(
-                posF[0]+800, posF[1]), size=(250, 500), style=wx.DEFAULT_FRAME_STYLE)
+                posF[0]+800, posF[1]), size=(250, 600), style=wx.DEFAULT_FRAME_STYLE)
             gv.iDetailPanel = PanelDebug(self.debugFrame)
             self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
             self.debugFrame.Show()
@@ -337,85 +337,107 @@ class PanelDebug(wx.Panel):
         """ Build the main UI Sizer. """
         elemSize, flagsR = (80, 25), wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        gs = wx.FlexGridSizer(13, 2, 5, 5)
-
+        gs = wx.FlexGridSizer(18, 2, 5, 5)
+        # Generator setup:
+        # row:0
+        gs.Add(wx.StaticText(self, label='Generator Setup:'), flag=flagsR, border=2)
+        gs.AddSpacer(5)
+        # row:1
         gs.Add(wx.StaticText(self, label=' Frequency : '), flag=flagsR, border=2)
         self.genFieldlList['Freq'] = wx.TextCtrl(self, -1, "50.00", size=elemSize)
         gs.Add(self.genFieldlList['Freq'], flag=flagsR, border=2)
-
+        # row:2
         gs.Add(wx.StaticText(self, label=' Voltage : '), flag=flagsR, border=2)
         self.genFieldlList['Volt'] = wx.TextCtrl(self, -1, "11.00", size=elemSize)
         gs.Add(self.genFieldlList['Volt'], flag=flagsR, border=2)
-
+        # row:3
         gs.Add(wx.StaticText(self, label=' Frequency LED : '),
                flag=flagsR, border=2)
         self.genFieldlList['Fled'] = wx.ComboBox(
             self, -1, choices=['green', 'amber', 'red'], size=elemSize)
         self.genFieldlList['Fled'].SetSelection(0)
         gs.Add(self.genFieldlList['Fled'], flag=flagsR, border=2)
-
+        # row:4
         gs.Add(wx.StaticText(self, label=' Voltage LED : '),
                flag=flagsR, border=2)
         self.genFieldlList['Vled'] = wx.ComboBox(
             self, -1, choices=['green', 'amber', 'red'], size=elemSize)
         self.genFieldlList['Vled'].SetSelection(0)
         gs.Add(self.genFieldlList['Vled'], flag=flagsR, border=2)
-
+        # row:5
         gs.Add(wx.StaticText(self, label=' Motor LED : '), flag=flagsR, border=2)
         self.genFieldlList['Mled'] = wx.ComboBox(
             self, -1, choices=['green', 'amber', 'red'], size=elemSize)
         self.genFieldlList['Mled'].SetSelection(0)
         gs.Add(self.genFieldlList['Mled'], flag=flagsR, border=2)
-
+        # row:6
         gs.Add(wx.StaticText(self, label=' Pump LED : '), flag=flagsR, border=2)
         self.genFieldlList['Pled'] = wx.ComboBox(
             self, -1, choices=['green', 'amber', 'red'], size=elemSize)
         self.genFieldlList['Pled'].SetSelection(0)
         gs.Add(self.genFieldlList['Pled'], flag=flagsR, border=2)
-
+        # row:7
         gs.Add(wx.StaticText(self, label=' Smoke : '), flag=flagsR, border=2)
         self.genFieldlList['Smok'] = wx.ComboBox(
             self, -1, choices=['slow', 'fast', 'off'], size=elemSize)
         self.genFieldlList['Smok'].SetSelection(0)
         gs.Add(self.genFieldlList['Smok'], flag=flagsR, border=2)
-
+        # row:8
         gs.Add(wx.StaticText(self, label=' Siren : '), flag=flagsR, border=2)
         self.genFieldlList['Sirn'] = wx.ComboBox(
             self, -1, choices=['on', 'off'], size=elemSize)
         self.genFieldlList['Sirn'].SetSelection(1)
         gs.Add(self.genFieldlList['Sirn'], flag=flagsR, border=2)
-
+        # row:9
         gs.Add(wx.StaticText(self, label=' Pump speed : '), flag=flagsR, border=2)
         self.plcFieldList['Pspd'] = wx.ComboBox(
             self, -1, choices=['off', 'low', 'high'], size=elemSize)
         self.plcFieldList['Pspd'].SetSelection(0)
         gs.Add(self.plcFieldList['Pspd'], flag=flagsR, border=2)
-
+        # row:10
         gs.Add(wx.StaticText(self, label=' Moto speed : '), flag=flagsR, border=2)
         self.plcFieldList['Mspd'] = wx.ComboBox(
             self, -1, choices=['off', 'low', 'high'], size=elemSize)
         self.plcFieldList['Mspd'].SetSelection(0)
         gs.Add(self.plcFieldList['Mspd'], flag=flagsR, border=2)
+        # row:11
         gs.Add(wx.StaticText(self, label=' All sensor control : '),
                flag=flagsR, border=2)
         self.plcFieldList['Spwr'] = wx.ComboBox(
             self, -1, choices=['on', 'off'], size=elemSize)
         self.plcFieldList['Spwr'].SetSelection(0)
         gs.Add(self.plcFieldList['Spwr'], flag=flagsR, border=2)
+        # row:12
         gs.Add(wx.StaticText(self, label=' All power control : '),
                flag=flagsR, border=2)
         self.plcFieldList['Mpwr'] = wx.ComboBox(
             self, -1, choices=['on', 'off'], size=elemSize)
         self.plcFieldList['Mpwr'].SetSelection(0)
         gs.Add(self.plcFieldList['Mpwr'], flag=flagsR, border=2)
-        
+        # row:13
         self.rstBt = wx.Button(self, label='Reset', size=elemSize)
         self.rstBt.Bind(wx.EVT_BUTTON, self.onReset)
         gs.Add(self.rstBt, flag=flagsR, border=2)
-
         self.sendBt = wx.Button(self, label='Set', size=elemSize)
         self.sendBt.Bind(wx.EVT_BUTTON, self.onSend)
         gs.Add(self.sendBt, flag=flagsR, border=2)
+        # Display frame setup.
+        # row:14
+        gs.Add(wx.StaticText(self, label='DisplayPnel Setup:'), flag=flagsR, border=2)
+        gs.AddSpacer(5)
+        # row:15
+        gs.Add(wx.StaticText(self, label=' Screen Pos X : '), flag=flagsR, border=2)
+        self.disPnlX = wx.TextCtrl(self, -1,str(gv.gDisPnlPos[0]), size=elemSize)
+        gs.Add(self.disPnlX, flag=flagsR, border=2)
+        # row:16
+        gs.Add(wx.StaticText(self, label=' Screen Pos Y : '), flag=flagsR, border=2)
+        self.disPnlY = wx.TextCtrl(self, -1,str(gv.gDisPnlPos[1]), size=elemSize)
+        gs.Add(self.disPnlY, flag=flagsR, border=2)
+        # row:17
+        gs.AddSpacer(5)
+        self.disSetBt = wx.Button(self, label='Set', size=elemSize)
+        self.disSetBt.Bind(wx.EVT_BUTTON, self.onSetDis)
+        gs.Add(self.disSetBt, flag=flagsR, border=2)
 
         mSizer.Add(gs, flag=flagsR, border=2)
         return mSizer
@@ -447,3 +469,21 @@ class PanelDebug(wx.Panel):
         plcDict = {key:self.plcFieldList[key].GetValue() for key in self.plcFieldList.keys()}
         gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
 
+#-----------------------------------------------------------------------------
+    def onSetDis(self ,event):
+        posX = int(self.disPnlX.GetValue())
+        posY = int(self.disPnlY.GetValue())
+        gv.gDisPnlPos = (posX, posY)
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+def main():
+    """ Main function used for local test debug panel. """
+    app = wx.App()
+    mainFrame = wx.Frame(gv.iMainFrame, -1, 'Debug Panel', pos=(300, 300), size=(250, 600), style=wx.DEFAULT_FRAME_STYLE)
+    gv.iDetailPanel = PanelDebug(mainFrame)
+    mainFrame.Show()
+    app.MainLoop()
+
+if __name__ == "__main__":
+    main()
