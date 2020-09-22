@@ -18,21 +18,20 @@ import time
 import json
 import pwrGenGobal as gv
 
-DEF_POS = (600, 700)    # default show up position on the screen
-TRANS_PCT = 70          # Windows transparent percentage.
+DEF_POS = (300, 300)    # default show up position on screen used for local test.
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class GenDisplayFrame(wx.Frame):
     """ Power generator module live situation display frame."""
 
     def __init__(self, parent, width, height, position=DEF_POS):
-        wx.Frame.__init__(self, parent, title="GenDisplay",
+        wx.Frame.__init__(self, parent, title="GenLiveDisplay",
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
         self.updateFlag = False  # flag to identify whether the panel need update.
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
-        self.SetTransparent(int(TRANS_PCT*255/100))
+        self.SetTransparent(gv.gTranspPct*255//100)
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Show()
@@ -58,8 +57,9 @@ class GenDisplayFrame(wx.Frame):
 #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ Call the panel update function to update the display."""
-        if self.updateFlag: gv.iPerGImgPnl.updateDisplay()
-        self.updateFlag = False  # reset the update flag after display updated.
+        if self.updateFlag:
+            gv.iPerGImgPnl.updateDisplay()
+            self.updateFlag = False  # reset the update flag after display updated.
 
 #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
@@ -71,16 +71,18 @@ class GenDisplayFrame(wx.Frame):
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelGen(wx.Panel):
-    """ Panel to show the power generator components live situation. """
+    """ Panel to draw the power generator components live situation. """
     def __init__(self, parent, panelSize=(400, 240)):
         wx.Panel.__init__(self, parent, size=panelSize)
         self.SetBackgroundColour(wx.Colour(200, 200, 200))
         self.panelSize = panelSize
-        self.bmp = wx.Bitmap(gv.PGIMG_PATH, wx.BITMAP_TYPE_ANY)     # back ground
-        self.smkOnBm = wx.Bitmap(gv.SMKOIMG_PATH, wx.BITMAP_TYPE_ANY)  # smoke on indicator
-        self.smkOffBm = wx.Bitmap(gv.SMKFIMG_PATH, wx.BITMAP_TYPE_ANY)  # smoke off indicator
-        self.sirBm = wx.Bitmap(gv.SIRIMG_PATH, wx.BITMAP_TYPE_ANY)  # siren indicator
-        self.toggle = True  # display toggle flash flag
+        self.toggle = True  # display indicator/led toggle flash flag
+        #Used bitmaps:
+        self.bgBm = wx.Bitmap(gv.PGIMG_PATH, wx.BITMAP_TYPE_ANY)         # back ground img
+        self.smkOnBm = wx.Bitmap(gv.SMKOIMG_PATH, wx.BITMAP_TYPE_ANY)   # smoke on indicator img
+        self.smkOffBm = wx.Bitmap(gv.SMKFIMG_PATH, wx.BITMAP_TYPE_ANY)  # smoke off indicator img
+        self.sirBm = wx.Bitmap(gv.SIRIMG_PATH, wx.BITMAP_TYPE_ANY)      # siren indicator img
+        # default display data dict: 
         self.genDict = {'Freq': '50.00',    # frequence (dd.dd)
                         'Volt': '11.00',    # voltage (dd.dd)
                         'Fled': 'green',    # frequence led (green/amber/off)
@@ -92,7 +94,7 @@ class PanelGen(wx.Panel):
                         'Mspd': 'off',      # moto speed (high/low/off)
                         'Sirn': 'on',       # siren (on/off)
                         }
-        # Setup the paint display functino.
+        # Setup the paint display function.
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
 
@@ -105,7 +107,7 @@ class PanelGen(wx.Panel):
                      'off': 'Black', 'slow': 'Yellow', 'fast': 'Red'} # color code.
         # display back ground.
         w, h = self.panelSize
-        dc.DrawBitmap(self._scaleBitmap(self.bmp, w, h), 0, 0)
+        dc.DrawBitmap(self._scaleBitmap(self.bgBm, w, h), 0, 0)
         # draw moto and pump speed text.
         dc.SetBrush(wx.Brush(wx.Colour('Gray')))
         dc.DrawRectangle(15, 205, 225, 25)
@@ -130,7 +132,7 @@ class PanelGen(wx.Panel):
 
         dc.SetTextForeground(wx.Colour('White'))
         
-        # Draw the voltage part
+        # Draw the voltage display part.
         dc.DrawText("Voltage", 260, 135)
         dc.SetPen(wx.Pen('BLACK'))
         for i in range(1, 10):
@@ -138,7 +140,7 @@ class PanelGen(wx.Panel):
             dc.DrawRectangle(265, i*6+150, 50, 8)
         dc.DrawText("%s KV" % self.genDict['Volt'], 265, 215)
 
-        # Draw the frequence part.
+        # Draw the frequence display part.
         dc.DrawText("Frequency", 330, 135)
         dc.SetPen(wx.Pen('BLACK'))
         for i in range(1, 10):
@@ -168,7 +170,7 @@ class PanelGen(wx.Panel):
     def updateBitmap(self, bitMap):
         """ Update the panel bitmap image."""
         if not bitMap: return
-        self.bmp = bitMap
+        self.bgBm = bitMap
 
 #--PanelGen--------------------------------------------------------------------
     def updateData(self, inputDict):
@@ -192,10 +194,14 @@ class PanelGen(wx.Panel):
         self.Refresh(False)
         self.Update()
 
-
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-if __name__ == "__main__":
+def main():
+    """ Main function used for local test. """
     app = wx.App()
     mainFrame = GenDisplayFrame(None, 410, 230)
     app.MainLoop()
+
+if __name__ == "__main__":
+    main()
+

@@ -2,7 +2,8 @@
 #-----------------------------------------------------------------------------
 # Name:        pwrGenPanel.py
 #
-# Purpose:     This module is used to create different function panels.
+# Purpose:     This module is used to create different function panels used for 
+#              <pwrGenRun> program UI parts.
 # Author:      Yuancheng Liu
 #
 # Created:     2020/01/10
@@ -15,7 +16,6 @@ from math import sin, cos, radians, pi
 import pwrGenGobal as gv
 import pwrGenDisplay as gd
 
-
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelMoto(wx.Panel):
@@ -27,7 +27,7 @@ class PanelMoto(wx.Panel):
         self.bmp = wx.Bitmap(gv.MOIMG_PATH, wx.BITMAP_TYPE_ANY)  # background
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
-        self.angle = 0  # rotate indicator angle
+        self.angle = 0  # rotate indicator angle(degree)
         self.motoSpd = 'off'  # speed text.
 
 #--PanelImge--------------------------------------------------------------------
@@ -306,7 +306,7 @@ class PanelCtrl(wx.Panel):
 #--PanelCtrl------------------------------------------------------------------
     def showDisplay(self, event):
         if gv.iDisFrame == None:
-            gv.iDisFrame = gd.GenDisplayFrame(self, 410, 230)
+            gv.iDisFrame = gd.GenDisplayFrame(self, 410, 230, position=gv.gDisPnlPos)
             self.displayBt.SetLabel('Display Panel X')
         else:
             gv.iDisFrame.onCloseWindow(None)
@@ -410,7 +410,7 @@ class PanelDebug(wx.Panel):
         gs.Add(self.plcFieldList['Mpwr'], flag=flagsR, border=2)
         
         self.rstBt = wx.Button(self, label='Reset', size=elemSize)
-        self.rstBt.Bind(wx.EVT_BUTTON, self.onSend)
+        self.rstBt.Bind(wx.EVT_BUTTON, self.onReset)
         gs.Add(self.rstBt, flag=flagsR, border=2)
 
         self.sendBt = wx.Button(self, label='Set', size=elemSize)
@@ -420,7 +420,23 @@ class PanelDebug(wx.Panel):
         mSizer.Add(gs, flag=flagsR, border=2)
         return mSizer
 
-#-----------------------------------------------------------------------------N
+#-----------------------------------------------------------------------------
+    def onReset(self, event):
+        """ Reset the panel components to default value."""
+        self.genFieldlList['Freq'].SetValue('50.00')
+        self.genFieldlList['Volt'].SetValue('11.00')
+        self.genFieldlList['Fled'].SetSelection(0)
+        self.genFieldlList['Vled'].SetSelection(0)
+        self.genFieldlList['Mled'].SetSelection(0)
+        self.genFieldlList['Pled'].SetSelection(0)
+        self.genFieldlList['Smok'].SetSelection(0)
+        self.genFieldlList['Sirn'].SetSelection(1)
+        self.plcFieldList['Pspd'].SetSelection(0)
+        self.plcFieldList['Mspd'].SetSelection(0)
+        self.plcFieldList['Spwr'].SetSelection(0)
+        self.plcFieldList['Mpwr'].SetSelection(0)
+
+#-----------------------------------------------------------------------------
     def onSend(self, event):
         """ Send the setting to the Raspberry PI"""
         print('Send Gen setting debug message')
@@ -430,3 +446,4 @@ class PanelDebug(wx.Panel):
         print('Send PLC setting deubg message')
         plcDict = {key:self.plcFieldList[key].GetValue() for key in self.plcFieldList.keys()}
         gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
+
