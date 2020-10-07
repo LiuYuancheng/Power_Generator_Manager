@@ -213,6 +213,7 @@ class PanelLoad(wx.Panel):
         sizerAll.Add(wx.StaticText(
             self, -1, 'System Load Indicators:'), flag=flagsR, border=2)
         sizerAll.AddSpacer(10)
+
         #sizer = wx.GridSizer(8, 2, 4, 4)
         sizer = wx.FlexGridSizer(7, 2, 4, 4) # use flexable sizer.
         lbStrList = ('Inductrial Area [PLC1] : ',

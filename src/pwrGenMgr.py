@@ -44,7 +44,8 @@ class pwrGenClient(object):
         # Set the load number.
         self.parent = parent
         self.loadNum = 0
-        self.debug = debug  # debug mode flag.
+        self.autoCtrl = False   # Gen auto control based on load number.
+        self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
@@ -147,6 +148,9 @@ class pwrGenClient(object):
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
             respStr = self.stateMgr.getGenInfo()
         # Send back the response string.
+        elif msgDict['Cmd'] == 'SetALC':
+            # set auto load control
+            self.autoCtrl = msgDict['Parm']
         return respStr
 
 #--------------------------------------------------------------------------
@@ -187,7 +191,29 @@ class pwrGenClient(object):
             except Exception as err:
                 print("PLC3[%s] data read error:\n%s" %(PLC3_IP, err))
                 self.plc3.connected = False
-        self.stateMgr.updateLoadPlcState(loadDict)       
+        
+        self.stateMgr.updateLoadPlcState(loadDict)
+        self.autoCtrlGen(sum(loadDict.values())) # get the load number.
+
+#--------------------------------------------------------------------------
+    def autoCtrlGen(self, loadCount):
+        """"Auto adjust the gen based on the load number.
+        Args:
+            loadCount ([int]): [l]
+        Returns:
+            [type]: [description]
+        """
+        if (not self.autoCtrl) or (self.loadNum == loadCount):
+            return # no change.
+        genDict = {'Freq': '52.00',
+            'Volt': '00.00',
+            'Fled': 'red',
+            'Vled': 'red',
+            'Mled': 'red',
+            'Pled': 'red',
+            'Smok': 'off',
+            'Sirn': 'off',}
+        self.stateMgr.updateGenSerState(genDict)
 
 #--------------------------------------------------------------------------
     def setMainPwr(self, val):
@@ -231,10 +257,12 @@ class pwrGenClient(object):
         parm = 1 if val == 'on' else 0
         self.plc3.writeMem('M4', parm)
         self.plc3.writeMem('M5', parm)
+
 #--------------------------------------------------------------------------
     def startAttack(self, threadName):
         """ Simulate the attack situation."""
         time.sleep(10)
+        self.autoCtrl = False   # turn off the auto control.
         msgStr = "52.00:11.00:amber:amber:amber:amber:off:on"
         self.serialComm.write(msgStr.encode('utf-8'))
         genDict = {'Freq': '52.00',

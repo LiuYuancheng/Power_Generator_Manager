@@ -175,8 +175,8 @@ class AppFrame(wx.Frame):
         sizerInfo.AddSpacer(5)
         # Generator information display panel.
         genSizer = wx.BoxSizer(wx.VERTICAL)
-        genSizer.Add(wx.StaticText(
-            self, -1, 'Generator Information:'), flag=flags, border=2)
+        self.infoLabel = wx.StaticText(self, -1, 'Generator Information [Ctrl Mode > Auto] :')
+        genSizer.Add(self.infoLabel, flag=flags, border=2)
         genSizer.AddSpacer(10)
         # - add infomation display panel.
         genSizer.Add(self._buildGenInfoSizer(), flag=flags, border=2)
@@ -227,7 +227,7 @@ class AppFrame(wx.Frame):
             connection information.
         """
         sizer = wx.GridSizer(1, 7, 5, 5)
-        sizer.Add(wx.StaticText(self, -1, 'Connection State : '))
+        sizer.Add(wx.StaticText(self, -1, ' Device Connection State : '))
         sizer.AddSpacer(5)
         # Raspberry PI connection.
         self.rspLedBt = wx.Button(self, label='RsPI', size=(75, 30))
