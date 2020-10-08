@@ -211,9 +211,9 @@ class pwrGenClient(object):
             return # no change.
         self.loadNum  = loadCount
         freqList= ['52.00', '51.20', '50.80', '50.40', '50.00', '50.00', '50.00', '49.8']
-        sirenSt = 'on' if self.loadNum > 1 else 'off'
+        sirenSt = 'on' if self.loadNum < 2 else 'off'
         color = 'red' if self.loadNum < 5 else 'green'
-        if self.loadNum == 7: color = 'yellow'
+        if self.loadNum == 7: color = 'amber'
         genDict = {'Freq': freqList[self.loadNum ],
             'Volt': '11.00',
             'Fled': color,
@@ -222,7 +222,8 @@ class pwrGenClient(object):
             'Pled': 'red',
             'Smok': 'fast',
             'Sirn': sirenSt,}
-
+        msgStr = ':'.join((genDict['Freq'], genDict['Volt'], genDict['Fled'], genDict['Vled'],  genDict['Mled'], genDict['Pled'], genDict['Smok'], genDict['Sirn']))
+        self.serialComm.write(msgStr.encode('utf-8'))
         self.stateMgr.updateGenSerState(genDict)
 
 #--------------------------------------------------------------------------
