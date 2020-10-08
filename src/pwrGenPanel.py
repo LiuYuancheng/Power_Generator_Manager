@@ -338,7 +338,7 @@ class PanelDebug(wx.Panel):
         """ Build the main UI Sizer. """
         elemSize, flagsR = (80, 25), wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        gs = wx.FlexGridSizer(18, 2, 5, 5)
+        gs = wx.FlexGridSizer(19, 2, 5, 5)
         # Generator setup:
         # row:0
         gs.Add(wx.StaticText(self, label='Generator Setup:'), flag=flagsR, border=2)
@@ -439,6 +439,11 @@ class PanelDebug(wx.Panel):
         self.disSetBt = wx.Button(self, label='Set', size=elemSize)
         self.disSetBt.Bind(wx.EVT_BUTTON, self.onSetDis)
         gs.Add(self.disSetBt, flag=flagsR, border=2)
+        # row 18
+        gs.Add(wx.StaticText(self, label=' Control Mode : '), flag=flagsR, border=2)
+        self.ctrlMode = wx.ComboBox(self, -1, choices=['Manul', 'Auto'], size=elemSize)
+        self.ctrlMode.Bind(wx.EVT_COMBOBOX, self.onModeChange)
+        gs.Add(self.ctrlMode, flag=flagsR, border=2)
 
         mSizer.Add(gs, flag=flagsR, border=2)
         return mSizer
@@ -458,6 +463,13 @@ class PanelDebug(wx.Panel):
         self.plcFieldList['Mspd'].SetSelection(0)
         self.plcFieldList['Spwr'].SetSelection(0)
         self.plcFieldList['Mpwr'].SetSelection(0)
+#-----------------------------------------------------------------------------
+    def onModeChange(self, event):
+        """ Change the generator control mode.
+        """
+        genDict = {'Mode':self.ctrlMode.GetSelection()}
+        print("Send the mode setting: %s" %str(genDict))
+        gv.iMainFrame.connectReq('SetALC', parm=genDict)
 
 #-----------------------------------------------------------------------------
     def onSend(self, event):

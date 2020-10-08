@@ -151,6 +151,7 @@ class pwrGenClient(object):
         elif msgDict['Cmd'] == 'SetALC':
             # set auto load control
             self.autoCtrl = msgDict['Parm']
+            self.stateMgr.updateGenPlcState(msgDict['Parm'])
         return respStr
 
 #--------------------------------------------------------------------------
@@ -308,7 +309,8 @@ class stateManager(object):
                             'Mspd': 'off',      # moto speed (high/low/off)
                             'Sirn': 'off',      # siren (on/off)
                             'Spwr': 'off',      # sensor power (on/off)
-                            'Mpwr': 'on'        # main power (on/off)
+                            'Mpwr': 'on',        # main power (on/off)
+                            'Mode': 0           # control mode.
                         }
         # Power load state dictionary. 
         self.loadDict = {   'Indu': 0,      # Industry area

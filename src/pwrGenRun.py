@@ -134,6 +134,7 @@ class AppFrame(wx.Frame):
         # Build the UI.
         self.SetSizer(self._buildUISizer())
         self.SetTransparent(gv.gAlphaValue)
+        self.genCtrlMd = 0
         # Init the communicator thread.
         self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         self.clieComThread = CommThread(self, 0, "client thread")
@@ -242,11 +243,11 @@ class AppFrame(wx.Frame):
         self.plc1LedBt.SetBackgroundColour(wx.Colour('GRAY'))
         sizer.Add(self.plc1LedBt)
         # PLC 2.
-        self.plc2LedBt = wx.Button(self, label='PLC1', size=(75, 30))
+        self.plc2LedBt = wx.Button(self, label='PLC2', size=(75, 30))
         self.plc2LedBt.SetBackgroundColour(wx.Colour('GRAY'))
         sizer.Add(self.plc2LedBt)
         # PLC 3.
-        self.plc3LedBt = wx.Button(self, label='PLC1', size=(75, 30))
+        self.plc3LedBt = wx.Button(self, label='PLC3', size=(75, 30))
         self.plc3LedBt.SetBackgroundColour(wx.Colour('GRAY'))
         sizer.Add(self.plc3LedBt)
         return sizer
@@ -321,7 +322,8 @@ class AppFrame(wx.Frame):
             'Load'  : json.dumps({'Cmd': 'Get', 'Parm': 'Load'}),
             'Gen'   : json.dumps({'Cmd': 'Get', 'Parm': 'Gen'}),
             'SetGen': json.dumps({'Cmd': 'SetGen', 'Parm': parm}),
-            'SetPLC': json.dumps({'Cmd': 'SetPLC', 'Parm': parm})
+            'SetPLC': json.dumps({'Cmd': 'SetPLC', 'Parm': parm}),
+            'SetALC': json.dumps({'Cmd': 'SetALC', 'Parm': parm})
         }
         if req in cmdDict.keys():
             self.clieComThread.appendMsg(req, cmdDict[req])
@@ -445,7 +447,14 @@ class AppFrame(wx.Frame):
             # Main power indicator.
             if 'Mpwr' in resultDict.keys():
                 self.sysPnl.setPwrLED('Mpwr', colorDict[resultDict['Mpwr']])
-
+            # Gen ctrol mode label.
+            if 'Mode' in resultDict.keys():
+                print("Read the gen control mode: %s" %str(resultDict['Mode']))
+                if resultDict['Mode'] != self.genCtrlMd:
+                    lb = 'Generator Information [Ctrl Mode > Auto] :' if resultDict['Mode'] else 'Generator Information [Ctrl Mode > Manual] :'
+                    self.infoLabel.SetLabel(lb)
+                    self.genCtrlMd = resultDict['Mode']
+            # update all components.
             self.Refresh(False)
 
 #-----------------------------------------------------------------------------
