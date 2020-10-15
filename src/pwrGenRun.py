@@ -343,6 +343,8 @@ class AppFrame(wx.Frame):
                 self.statusbar.SetStatusText(">>>> Disconnected! try do re-connection.")
                 self.setConnLED(result)
                 return
+            else:
+                self.reConCount = 0 #no need reconnect if there is response.
             if key == 'Login':
                 self.setConnLED(result)
             elif key == 'Load':

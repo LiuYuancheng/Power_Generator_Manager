@@ -53,6 +53,7 @@ class pwrGenClient(object):
         self.plc1 = m221.M221(PLC1_IP)
         self.plc2 = s71200.S7PLC1200(PLC2_IP)
         self.plc3 = m221.M221(PLC3_IP)
+        self.reConnectCount = 10 if self.plc1.connected and self.plc2.connected and self.plc3.connected else 0
         # Init the UDP server.
         # self.server = udpCom.udpServer(None, UDP_PORT)
         self.servThread = CommThread(self, 0, "server thread")
@@ -79,10 +80,16 @@ class pwrGenClient(object):
         print("Manager main loop start.")
         while self.bgCtrler.bgRun():
             # Get the 3 PLC load state:
-            if not TEST_MODE: self.getLoadState()
+            if not TEST_MODE:
+                self.getLoadState()
+                if self.reConnectCount > 0:
+                    self.reConnectCount -= 1
+                    print(">>> reconnect PLC in %s sec" %str(self.reConnectCount))
             if TEST_MODE:
                 self.loadNum+=1
                 self.autoCtrlGen(self.loadNum%7)
+            if self.reConnectCount == 1:
+                self.plcReconnect()
             time.sleep(TIME_INT)
         # Stop the program and stop all the connection
         self.servThread.stop()
@@ -92,6 +99,28 @@ class pwrGenClient(object):
         if self.plc2.connected: self.plc2.disconnect()
         if self.plc3.connected: self.plc3.disconnect()
         print("Power generator main loop end.")
+
+#--------------------------------------------------------------------------
+    def plcReconnect(self):
+        """ Try to reconnect the PLC if the plc is not connect at the beginning.
+        """
+        if self.plc1 is None or (not self.plc1.connected):
+            if not self.plc1 is None:
+                self.plc1.disconnect()  # disconnect to release the socket.
+            print("Try to reconnect to PLC1: %s" %str(PLC1_IP))
+            self.plc1 = m221.M221(PLC1_IP)
+
+        if self.plc2 is None or (not self.plc2.connected):
+            if not self.plc2 is None:
+                self.plc2.disconnect()  # disconnect to release the socket.
+            print("Try to reconnect to PLC2: %s" %str(PLC2_IP))
+            self.plc2 = s71200.S7PLC1200(PLC2_IP)
+
+        if self.plc3 is None or (not self.plc3.connected):
+            if not self.plc3 is None:
+                self.plc3.disconnect()  # disconnect to release the socket.
+            print("Try to reconnect to PLC3: %s" %str(PLC3_IP))
+            self.plc3 = m221.M221(PLC3_IP)
 
 #--------------------------------------------------------------------------
     def msgHandler(self, msg):
@@ -112,9 +141,9 @@ class pwrGenClient(object):
             if msgDict['Parm'] == 'Con':
                 # connection state fetch request.
                 fbDict = {'Serial': self.serialComm.connected,
-                          'Plc1': self.plc1.connected,
-                          'Plc2': self.plc2.connected,
-                          'Plc3': self.plc3.connected
+                          'Plc1': (not self.plc1 is None) and self.plc1.connected,
+                          'Plc2': (not self.plc2 is None) and self.plc2.connected,
+                          'Plc3': (not self.plc2 is None) and self.plc3.connected
                           }
                 respStr = json.dumps(fbDict)
             elif msgDict['Parm'] == 'Gen':
@@ -400,7 +429,6 @@ class CommThread(threading.Thread):
         endClient = udpCom.udpClient(('127.0.0.1', UDP_PORT))
         endClient.disconnect()
         endClient = None
-
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
