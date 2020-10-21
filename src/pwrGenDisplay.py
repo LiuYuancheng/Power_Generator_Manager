@@ -3,8 +3,8 @@
 # Name:        pwGenDisplay.py
 #
 # Purpose:     This module is used to create a transparent, no window board live 
-#              situation display frame show overlay on top of the CSI OT-Platform 
-#              HMI program.
+#              generator working situation display frame show overlay on top of 
+#              the CSI OT-Platform HMI program.
 #
 # Author:      Yuancheng Liu
 #

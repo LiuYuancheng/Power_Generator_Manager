@@ -15,6 +15,7 @@ from math import sin, cos, radians, pi
 
 import pwrGenGobal as gv
 import pwrGenDisplay as gd
+import pwrSubDisplay as sd
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
@@ -271,16 +272,25 @@ class PanelCtrl(wx.Panel):
         self.mainPwrBt = wx.Button(self, label='System Main Pwr ', size=(120, 30))
         self.mainPwrBt.SetBackgroundColour(wx.Colour('Gray'))
         ctSizer.Add(self.mainPwrBt, flag=flagsR, border=2)
-        ctSizer.AddSpacer(3)
+        ctSizer.AddSpacer(10)
         
-        self.debugBt = wx.Button(self, label='Debug Panel >', size=(120, 30))
-        self.debugBt.Bind(wx.EVT_BUTTON, self.showDebug)
+        #self.debugBt = wx.Button(self, label='Debug Panel >', size=(120, 30))
+        #self.debugBt.Bind(wx.EVT_BUTTON, self.showDebug)
+        self.debugBt = wx.CheckBox(self, label = 'Debug Panel')
+        self.debugBt.Bind(wx.EVT_CHECKBOX, self.showDebug)
         ctSizer.Add(self.debugBt, flag=flagsR, border=2)
         ctSizer.AddSpacer(3)
 
-        self.displayBt = wx.Button(self, label='Display Panel >', size=(120, 30))
-        self.displayBt.Bind(wx.EVT_BUTTON, self.showDisplay)
-        ctSizer.Add(self.displayBt, flag=flagsR, border=2)        
+        #self.displayBt = wx.Button(self, label='Gen Panel >', size=(120, 30))
+        #self.displayBt.Bind(wx.EVT_BUTTON, self.showDisplay)
+        self.genBt = wx.CheckBox(self, label = 'Generator Panel')
+        self.genBt.Bind(wx.EVT_CHECKBOX, self.showGenDisplay)
+        ctSizer.Add(self.genBt, flag=flagsR, border=2)        
+        ctSizer.AddSpacer(3)
+
+        self.subBt = wx.CheckBox(self, label = 'Substation Panel')
+        self.subBt.Bind(wx.EVT_CHECKBOX, self.showSubDisplay)
+        ctSizer.Add(self.subBt, flag=flagsR, border=2)
 
         return ctSizer
 
@@ -296,31 +306,44 @@ class PanelCtrl(wx.Panel):
     def showDebug(self, evnt):
         """ pop-up the debug window.
         """
-        if self.debugFrame == None:
+        if self.debugFrame == None and self.debugBt.IsChecked():
             posF = gv.iMainFrame.GetPosition()
             self.debugFrame = wx.MiniFrame(gv.iMainFrame, -1, 'Debug Panel', pos=(
                 posF[0]+800, posF[1]), size=(250, 600), style=wx.DEFAULT_FRAME_STYLE)
             gv.iDetailPanel = PanelDebug(self.debugFrame)
             self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
             self.debugFrame.Show()
+        elif self.debugFrame:
+            # close the debug window if the user unchecked the checkbox.
+            self.debugFrame.Destroy()
+            self.debugFrame = gv.iDetailPanel = None
+        print("Triggered the check box event.\n")
 
 #--PanelCtrl------------------------------------------------------------------
-    def showDisplay(self, event):
-        if gv.iDisFrame == None:
+    def showGenDisplay(self, event):
+        if gv.iDisFrame == None and self.genBt.IsChecked():
             gv.iDisFrame = gd.GenDisplayFrame(self, 410, 230, position=gv.gDisPnlPos)
-            self.displayBt.SetLabel('Display Panel X')
         else:
             gv.iDisFrame.onCloseWindow(None)
             gv.iPerGImgPnl = None
             gv.iDisFrame = None
-            self.displayBt.SetLabel('Display Panel >')
 
+#--PanelCtrl------------------------------------------------------------------
+    def showSubDisplay(self, event):
+        if gv.iSubFrame == None and self.subBt.IsChecked():
+            gv.iSubFrame = sd.SubDisplayFrame(self, 410, 230, position=gv.gSubPnlPos)
+        else:
+            gv.iSubFrame.onCloseWindow(None)
+            gv.iPerSImgPnl = None
+            gv.iSubFrame = None
+            
 #--PanelCtrl------------------------------------------------------------------
     def infoWinClose(self, event):
         """ Close the pop-up detail information window and clear paremeters."""
         if self.debugFrame:
             self.debugFrame.Destroy()
             self.debugFrame = gv.iDetailPanel = None
+            if self.debugBt.IsChecked(): self.debugBt.SetValue(False)
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------

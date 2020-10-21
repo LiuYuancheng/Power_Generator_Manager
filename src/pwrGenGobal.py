@@ -32,6 +32,7 @@ SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")        # siren on image
 gUdpPort = 5005             # UDP communication port.
 gAlphaValue = 200           # transparent alphaValue.(0-255)
 gDisPnlPos  = (600, 780)    # Display panel popup default position.
+gSubPnlPos  = (900, 200)    # Substation panel popup default position.
 gUpdateRate = 0.5           # main frame update rate min base 0.5 sec.
 gTranspPct = 70             # Windows transparent percentage.
 
@@ -41,7 +42,8 @@ iCtrlPanel = None           # Control panel
 iDetailPanel = None         # Debug and manually control panel.
 iMainFrame = None           # MainFrame.
 iDisFrame = None            # Display frame.
+iSubFrame = None            # Substation frame.
 iMotoImgPnl = None          # Moto speed image panel.
 iPumpImgPnl = None          # Pump image speed panel.
-iPerGImgPnl = None          # Generator panel
-
+iPerGImgPnl = None          # Generator panel.
+iPerSImgPnl = None          # Substation panel.
