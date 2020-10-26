@@ -6,7 +6,7 @@
 #              substation control parameter simulation display frame show overlay 
 #              on top of the CSI OT-Platform HMI program.
 #
-# Author:      Yuancheng Liu, Zhang Guihai
+# Author:      Yuancheng Liu, Shantanu Chakrabarty, Zhang Guihai
 #
 # Created:     2020/10/2
 # Copyright:   Singtel Cyber Security Research & Development Laboratory
@@ -22,13 +22,15 @@ DEF_POS = (300, 300)    # default show up position on screen used for local test
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class SubDisplayFrame(wx.Frame):
-    """ Power generator module live situation display frame."""
+    """ Power substaion module live situation display frame."""
 
     def __init__(self, parent, width, height, position=DEF_POS):
-        wx.Frame.__init__(self, parent, title="SubLiveDisplay",
+        wx.Frame.__init__(self, parent, title="SubstationLiveDisplay",
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
         self.SetBackgroundColour(wx.Colour('BLACK'))
-        self.updateFlag = False  # flag to identify whether the panel need update.
+        # flag to identify whether can date the display panel.
+        self.updateFlag = True
+        self.parmDialog = None  # pop up dialog for change/select paramters.
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
         self.SetTransparent(gv.gTranspPct*255//100)
@@ -43,31 +45,65 @@ class SubDisplayFrame(wx.Frame):
         elemSize= (40,20)
         # build the upper panel.
         self.upPnl = wx.Panel(self, size=(400, 50))
-        self.upPnl.SetBackgroundColour(wx.Colour('GREEN'))
-        self.vkBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vk [0.0]', (5, 15))
+        self.upPnl.SetBackgroundColour(wx.Colour('Gray'))
+        self.vkBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vk [0.0]', pos=(5, 15))
+        self.vkBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.swBt = wx.CheckBox(
             self.upPnl, wx.ID_ANY, label='Switch', pos=(100, 25))
         self.swBt.Bind(wx.EVT_CHECKBOX, self.turnSw)
-
-        self.tkmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Tkm [0.0]', (200, 15))
-        self.vmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vm [0.0]', (320, 15))
+        self.tkmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Tkm [0.0]',  pos=(200, 15))
+        self.tkmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.vmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vm [0.0]',  pos=(320, 15))
+        self.vmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         sizer.Add(self.upPnl, flag=wx.CENTER, border=2)
-        
+
         # build the display area.
         gv.iPerSImgPnl = PanelSub(self)
         sizer.Add(gv.iPerSImgPnl, flag=wx.CENTER, border=2)
 
         # build the bottum panel.
-        self.downPnl = wx.Panel(self, size =(400, 50))
-        self.downPnl.SetBackgroundColour(wx.Colour('RED'))
-        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj [0.0]', (5, 10))
-        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Forms [0.0]', (200, 5))
-        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj [0.0]', (320, 10))
+        self.downPnl = wx.Panel(self, size=(400, 50))
+        self.downPnl.SetBackgroundColour(wx.Colour('Gray'))
+        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_I [0.0]',  pos=(5, 10))
+        self.InjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Flows [0.0]',  pos=(200, 5))
+        self.FmjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_O [0.0]',  pos=(320, 10))
+        self.Inj2Bt.Bind(wx.EVT_BUTTON, self.onParmChange)
         sizer.Add(self.downPnl, flag=wx.CENTER, border=2)
 
         return sizer
 
+    #-----------------------------------------------------------------------------
+    def onParmChange(self, event):
+        """ Stop the mail frame update and pop-up the paramenter change dialog.
+        Args:
+            event ([wx.EVT_BUTTON]): [button press event]
+        """
+        btObj = event.GetEventObject()
+        lb = btObj.GetLabel().split(' ')[0]
+        if self.parmDialog:
+            self.parmDialog.Destroy()
+            self.parmDialog = None
+        self.updateFlag = False # disable display update
+        self.parmDialog = wx.SingleChoiceDialog(self, lb, 'Value', ['0', '1'])
+        resp = self.parmDialog.ShowModal()
+        self.updateFlag = True # enable display update
+
+    #-----------------------------------------------------------------------------
+    def updateDisplay(self):
+        """ update the diaplay panel."""
+        if self.updateFlag:
+            gv.iPerSImgPnl.updateDisplay()
+    
+        # update the parameter indicators.
+
+    #-----------------------------------------------------------------------------
     def turnSw(self, event):
+        """ Handle the switch on/off check box pressed.
+        Args:
+            event ([wx.EVT_CHECKBOX]): [description]
+        """
         gv.iPerSImgPnl.setSwitch(self.swBt.IsChecked())
 
     #-----------------------------------------------------------------------------
@@ -98,6 +134,14 @@ class PanelSub(wx.Panel):
 
 #-----------------------------------------------------------------------------
     def getTransIcon(self, posX, n):
+        """ Draw the points of the transformer spring. 
+        Args:
+            posX ([int]): horizontal position of the transformer spring.
+            n ([int]): num of points in on side of the spring.
+
+        Returns:
+            [int list]: spring points list.
+        """
         ptList = []
         dlt = 30//n
         for i in range(2*n):
@@ -116,8 +160,6 @@ class PanelSub(wx.Panel):
         dc.DrawLine(40, 0, 40, 80)
         dc.DrawLine(0, 40, 100, 40)
         
-
-
         # Switch
         color = 'Green' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
@@ -150,6 +192,40 @@ class PanelSub(wx.Panel):
         #self.toggle = not self.toggle # change the toggle flag every time we updated display
         self.Refresh(True)
         self.Update()
+
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+class stateManager(object):
+    """ Manager module to save the current system state. Add the parameter calculation 
+        formula in this class.
+    """ 
+    def __init__(self):
+        self.parmDict = {
+            'Vk':       0.0,
+            'Inj_I':    0.0,
+            'Switch':   0,
+            'Tkm':      0.0,
+            'Flows':    0.0,
+            'Vm':       0.0,
+            'Ing_O':    0.0
+        }
+
+#-----------------------------------------------------------------------------
+    def getVal(self, keyStr):
+        if keyStr in self.parmDict.keys():
+            return self.parmDict[keyStr]
+
+#-----------------------------------------------------------------------------
+    def setVal(self, keyStr, value):
+        if keyStr in self.parmDict.keys():
+            self.parmDict[keyStr] = value
+
+#-----------------------------------------------------------------------------
+    def changeRelated(self):
+        """ change the related parameter's value if on parameter is changed.
+        """
+        pass
+        # TODO: Add Shantanu Chakrabarty's formular here.
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
