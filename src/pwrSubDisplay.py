@@ -14,7 +14,6 @@
 #-----------------------------------------------------------------------------
 
 import wx
-import time
 import pwrGenGobal as gv
 
 DEF_POS = (300, 300)    # default show up position on screen used for local test.
@@ -22,7 +21,7 @@ DEF_POS = (300, 300)    # default show up position on screen used for local test
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class SubDisplayFrame(wx.Frame):
-    """ Power substaion module live situation display frame."""
+    """ Power substation module live situation display frame."""
 
     def __init__(self, parent, width, height, position=DEF_POS):
         wx.Frame.__init__(self, parent, title="SubstationLiveDisplay",
@@ -40,7 +39,7 @@ class SubDisplayFrame(wx.Frame):
 
     #-----------------------------------------------------------------------------
     def buidUISizer(self):
-        """ Build the UI and the return the wx.sizer. """
+        """ Build the UI and return the wx.sizer hold all the UI components. """
         sizer = wx.BoxSizer(wx.VERTICAL)
         elemSize= (40,20)
         # build the upper panel.
@@ -48,6 +47,8 @@ class SubDisplayFrame(wx.Frame):
         self.upPnl.SetBackgroundColour(wx.Colour('Gray'))
         self.vkBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vk [0.0]', pos=(5, 15))
         self.vkBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.vkBt.SetToolTip('Voltage measurement: k ')
+
         self.swBt = wx.CheckBox(
             self.upPnl, wx.ID_ANY, label='Switch', pos=(100, 25))
         self.swBt.Bind(wx.EVT_CHECKBOX, self.turnSw)
@@ -55,6 +56,8 @@ class SubDisplayFrame(wx.Frame):
         self.tkmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.vmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vm [0.0]',  pos=(320, 15))
         self.vmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.vmBt.SetToolTip('Voltage measurement: m ')
+
         sizer.Add(self.upPnl, flag=wx.CENTER, border=2)
 
         # build the display area.
@@ -66,10 +69,15 @@ class SubDisplayFrame(wx.Frame):
         self.downPnl.SetBackgroundColour(wx.Colour('Gray'))
         self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_I [0.0]',  pos=(5, 10))
         self.InjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.InjBt.SetToolTip('Injection measurement : \nInj_I = Ing-P[k],Q[k]')
+
         self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Flows [0.0]',  pos=(200, 5))
         self.FmjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.FmjBt.SetToolTip('Flow measurements: \n P[km], Q[km] \n P[mk], Q[mk]')
+
         self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_O [0.0]',  pos=(320, 10))
         self.Inj2Bt.Bind(wx.EVT_BUTTON, self.onParmChange)
+        self.Inj2Bt.SetToolTip('Injection measurement : \nInj_O = Ing-P[m],Q[m]')
         sizer.Add(self.downPnl, flag=wx.CENTER, border=2)
 
         return sizer
@@ -98,9 +106,10 @@ class SubDisplayFrame(wx.Frame):
     
         # update the parameter indicators.
 
+
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
-        """ Handle the switch on/off check box pressed.
+        """ Handle the switch on/off check box pressed by user.
         Args:
             event ([wx.EVT_CHECKBOX]): [description]
         """
@@ -115,26 +124,29 @@ class SubDisplayFrame(wx.Frame):
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelSub(wx.Panel):
-    """ Panel to draw the power generator components live situation. """
+    """ Panel to draw the substation grid circuit diagram live situation. """
     def __init__(self, parent, panelSize=(400, 80)):
         wx.Panel.__init__(self, parent, size=panelSize)
         #self.SetBackgroundColour(wx.Colour(200, 200, 200))
-        self.SetBackgroundColour(wx.Colour('BLACK'))
+        self.SetBackgroundColour(wx.Colour('Gray'))
         self.panelSize = panelSize
         self.swOn = False
-
         # Setup the paint display function.
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
 
 #-----------------------------------------------------------------------------
     def setSwitch(self, tag):
+        """ Update the substaion switch on/off state.
+        Args:
+            tag ([bool]): true-switch on, flase - switch off.
+        """
         self.swOn= tag
         self.updateDisplay()
 
 #-----------------------------------------------------------------------------
     def getTransIcon(self, posX, n):
-        """ Draw the points of the transformer spring. 
+        """ Draw the points of the transformer spring.(Currently not used.)
         Args:
             posX ([int]): horizontal position of the transformer spring.
             n ([int]): num of points in on side of the spring.
@@ -152,14 +164,23 @@ class PanelSub(wx.Panel):
         
 #-----------------------------------------------------------------------------
     def onPaint(self, evt):
+        """ Paint the panel.
+        Args:
+            evt ([wx.EVT_PAINT]): [description]
+        """
+        # Add the Device context to draw the background.
         dc = wx.PaintDC(self)
+        # Add the Graphics Context to draw the components.
+        gc = wx.GraphicsContext.Create(dc)
+        path = gc.CreatePath()
+        
         print("In paint function.")
 
         # Draw the background.
         dc.SetPen(wx.Pen('Green', width=2, style=wx.PENSTYLE_SOLID))
         dc.DrawLine(40, 0, 40, 80)
         dc.DrawLine(0, 40, 100, 40)
-        
+
         # Switch
         color = 'Green' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
@@ -169,12 +190,18 @@ class PanelSub(wx.Panel):
 
         # translater L
         dc.DrawLine(140, 40, 220, 40)
-        dc.DrawLines(self.getTransIcon(220, 6))
+        #dc.DrawLines(self.getTransIcon(220, 6))
+        gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        path.AddCircle(220, 40, 15)
+
         # translater R
         color = 'Blue' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
         dc.DrawLine(245, 40, 400, 40)
-        dc.DrawLines(self.getTransIcon(240, 10))
+        #dc.DrawLines(self.getTransIcon(240, 10))
+        gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        path.AddCircle(240, 40, 15)
+
         dc.DrawLine(360, 0, 360, 80)
 
         # Reference line
@@ -182,6 +209,8 @@ class PanelSub(wx.Panel):
         dc.DrawLine(100, 40, 100, 0)
         dc.DrawLine(270, 40, 270, 80)
 
+        path.CloseSubpath()
+        gc.DrawPath(path,0)
 
 #-----------------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
