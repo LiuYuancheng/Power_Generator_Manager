@@ -189,18 +189,18 @@ class PanelSub(wx.Panel):
         dc.DrawLine(100, 40, 140, swY)
 
         # translater L
-        dc.DrawLine(140, 40, 220, 40)
+        dc.DrawLine(140, 40, 185, 40)
         #dc.DrawLines(self.getTransIcon(220, 6))
         gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
-        path.AddCircle(220, 40, 15)
+        path.AddCircle(200, 40, 15)
 
         # translater R
         color = 'Blue' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
-        dc.DrawLine(245, 40, 400, 40)
+        dc.DrawLine(235, 40, 400, 40)
         #dc.DrawLines(self.getTransIcon(240, 10))
         gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
-        path.AddCircle(240, 40, 15)
+        path.AddCircle(220, 40, 15)
 
         dc.DrawLine(360, 0, 360, 80)
 
@@ -237,6 +237,23 @@ class stateManager(object):
             'Flows':    0.0,
             'Vm':       0.0,
             'Ing_O':    0.0
+        }
+
+        self.memDict = {
+            'ff00': 0,  #
+            'ff01': 0,
+            'ff02': 0,
+            'ff03': 0,
+            'ff04': 0,
+            'ff05': 0,
+            'ff06': 0,
+            'ff07': 0,
+            'ff08': 0,
+            'ff09': 0,
+            'ff10': 0,
+            'ff11': 0,
+            'ff12': 0,
+            'ff13': 0,
         }
 
 #-----------------------------------------------------------------------------

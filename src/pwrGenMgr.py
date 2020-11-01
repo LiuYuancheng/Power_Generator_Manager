@@ -18,7 +18,6 @@ import re
 import _thread # python2 thread is changed to '_thread' in python3
 import threading    # create multi-thread test case.
 
-
 import udpCom
 import serialCom
 import BgCtrl as bg
@@ -179,11 +178,16 @@ class pwrGenClient(object):
             # Updaste the state manager
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
             respStr = self.stateMgr.getGenInfo()
-        # Send back the response string.
+        
         elif msgDict['Cmd'] == 'SetALC':
             # set auto load control
             self.autoCtrl = msgDict['Parm']
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
+        elif msgDict['Cmd'] == 'GetSub':
+            # get the Substation memory value;
+            respStr = self.stateMgr.getSubInfo()
+
+        # Send back the response string.
         return respStr
 
 #--------------------------------------------------------------------------
@@ -362,10 +366,33 @@ class stateManager(object):
                             'City': 0,      # City power
                          }
 
+        # Substation memory dictrionary.
+        self.subMemDict = {
+            'ff00': 0,  #
+            'ff01': 0,
+            'ff02': 0,
+            'ff03': 0,
+            'ff04': 0,
+            'ff05': 0,
+            'ff06': 0,
+            'ff07': 0,
+            'ff08': 0,
+            'ff09': 0,
+            'ff10': 0,
+            'ff11': 0,
+            'ff12': 0,
+            'ff13': 0,
+        }
+        
 #--------------------------------------------------------------------------
     def getGenInfo(self):
         """ Return the generator state json string."""
         return json.dumps(self.genDict)
+
+#--------------------------------------------------------------------------
+    def getSubInfo(self):
+        """ Return the generator state json string."""
+        return json.dumps(self.subMemDict)
 
 #--------------------------------------------------------------------------
     def getLoadInfo(self):

@@ -304,12 +304,11 @@ class PanelCtrl(wx.Panel):
 
 #--PanelCtrl------------------------------------------------------------------
     def showDebug(self, evnt):
-        """ pop-up the debug window.
-        """
+        """ pop-up the debug window."""
         if self.debugFrame == None and self.debugBt.IsChecked():
             posF = gv.iMainFrame.GetPosition()
             self.debugFrame = wx.MiniFrame(gv.iMainFrame, -1, 'Debug Panel', pos=(
-                posF[0]+800, posF[1]), size=(250, 600), style=wx.DEFAULT_FRAME_STYLE)
+                posF[0]+800, posF[1]), size=(250, 800), style=wx.DEFAULT_FRAME_STYLE)
             gv.iDetailPanel = PanelDebug(self.debugFrame)
             self.debugFrame.Bind(wx.EVT_CLOSE, self.infoWinClose)
             self.debugFrame.Show()
@@ -361,7 +360,7 @@ class PanelDebug(wx.Panel):
         """ Build the main UI Sizer. """
         elemSize, flagsR = (80, 25), wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        gs = wx.FlexGridSizer(19, 2, 5, 5)
+        gs = wx.FlexGridSizer(21, 2, 5, 5)
         # Generator setup:
         # row:0
         gs.Add(wx.StaticText(self, label='Generator Setup:'), flag=flagsR, border=2)
@@ -450,19 +449,28 @@ class PanelDebug(wx.Panel):
         gs.Add(wx.StaticText(self, label='DisplayPnel Setup:'), flag=flagsR, border=2)
         gs.AddSpacer(5)
         # row:15
-        gs.Add(wx.StaticText(self, label=' Screen Pos X : '), flag=flagsR, border=2)
+        gs.Add(wx.StaticText(self, label=' GeneratorPnl Pos X : '), flag=flagsR, border=2)
         self.disPnlX = wx.TextCtrl(self, -1,str(gv.gDisPnlPos[0]), size=elemSize)
         gs.Add(self.disPnlX, flag=flagsR, border=2)
         # row:16
-        gs.Add(wx.StaticText(self, label=' Screen Pos Y : '), flag=flagsR, border=2)
+        gs.Add(wx.StaticText(self, label=' GeneratorPnl Pos Y : '), flag=flagsR, border=2)
         self.disPnlY = wx.TextCtrl(self, -1,str(gv.gDisPnlPos[1]), size=elemSize)
         gs.Add(self.disPnlY, flag=flagsR, border=2)
         # row:17
+        gs.Add(wx.StaticText(self, label=' SubstationPnl Pos X : '), flag=flagsR, border=2)
+        self.subPnlX = wx.TextCtrl(self, -1,str(gv.gSubPnlPos[0]), size=elemSize)
+        gs.Add(self.subPnlX, flag=flagsR, border=2)
+        # row 18
+        gs.Add(wx.StaticText(self, label=' SubstationPnl Pos Y : '), flag=flagsR, border=2)
+        self.subPnlY = wx.TextCtrl(self, -1,str(gv.gSubPnlPos[1]), size=elemSize)
+        gs.Add(self.subPnlY, flag=flagsR, border=2)                
+        # row:19
         gs.AddSpacer(5)
         self.disSetBt = wx.Button(self, label='Set', size=elemSize)
         self.disSetBt.Bind(wx.EVT_BUTTON, self.onSetDis)
         gs.Add(self.disSetBt, flag=flagsR, border=2)
-        # row 18
+        
+        # row 20
         gs.Add(wx.StaticText(self, label=' Control Mode : '), flag=flagsR, border=2)
         self.ctrlMode = wx.ComboBox(self, -1, choices=['Manul', 'Auto'], size=elemSize)
         self.ctrlMode.Bind(wx.EVT_COMBOBOX, self.onModeChange)
@@ -507,16 +515,24 @@ class PanelDebug(wx.Panel):
 
 #-----------------------------------------------------------------------------
     def onSetDis(self ,event):
-        posX = int(self.disPnlX.GetValue())
-        posY = int(self.disPnlY.GetValue())
-        gv.gDisPnlPos = (posX, posY)
+        """[Set the display panel pop-up position]
+        Args:
+            event ([wx.EVT_BUTTON]): [description]
+        """
+        posGX = int(self.disPnlX.GetValue())
+        posGY = int(self.disPnlY.GetValue())
+        gv.gDisPnlPos = (posGX, posGY)
+
+        posSX = int(self.subPnlX.GetValue())
+        posSY = int(self.subPnlY.GetValue())
+        gv.gDisPnlPos = (posSX, posSY) 
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 def main():
     """ Main function used for local test debug panel. """
     app = wx.App()
-    mainFrame = wx.Frame(gv.iMainFrame, -1, 'Debug Panel', pos=(300, 300), size=(250, 600), style=wx.DEFAULT_FRAME_STYLE)
+    mainFrame = wx.Frame(gv.iMainFrame, -1, 'Debug Panel', pos=(300, 300), size=(250, 800), style=wx.DEFAULT_FRAME_STYLE)
     gv.iDetailPanel = PanelDebug(mainFrame)
     mainFrame.Show()
     app.MainLoop()
