@@ -26,7 +26,7 @@ import S7PLC1200 as s71200
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
-TEST_MODE = False   # Local test mode flag.
+TEST_MODE = True   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'

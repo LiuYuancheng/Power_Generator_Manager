@@ -26,7 +26,7 @@ import pwrGenPanel as pl
 PERIODIC = 250  # main UI loop call back period.(ms)
 CMD_QSZ = 10    # communication cmd queue size.
 RECON_T = 10    # Re-connect time interval count.
-TEST_MD = False
+TEST_MD = True
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 #-----------------------------------------------------------------------------
@@ -140,7 +140,11 @@ class AppFrame(wx.Frame):
         self.clieComThread = CommThread(self, 0, "client thread")
         self.clieComThread.start()
         # Set the periodic call back
-        self.lastPeriodicTime = {'UI': time.time(), 'State': time.time(), 'Data': time.time()}
+        crtTime = time.time()
+        self.lastPeriodicTime = {   'GUI': crtTime, 
+                                    'State': crtTime, 
+                                    'Data': crtTime, 
+                                    'Mem': crtTime}
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
@@ -323,7 +327,8 @@ class AppFrame(wx.Frame):
             'Gen'   : json.dumps({'Cmd': 'Get', 'Parm': 'Gen'}),
             'SetGen': json.dumps({'Cmd': 'SetGen', 'Parm': parm}),
             'SetPLC': json.dumps({'Cmd': 'SetPLC', 'Parm': parm}),
-            'SetALC': json.dumps({'Cmd': 'SetALC', 'Parm': parm})
+            'SetALC': json.dumps({'Cmd': 'SetALC', 'Parm': parm}),
+            'GetSub': json.dumps({'Cmd': 'GetSub', 'Parm': parm})
         }
         if req in cmdDict.keys():
             self.clieComThread.appendMsg(req, cmdDict[req])
@@ -357,6 +362,8 @@ class AppFrame(wx.Frame):
                 self.setGensLED(result)
             elif key == 'SetPLC':
                 self.setGensLED(result)
+            elif key == 'GetSub' and gv.iSubFrame:
+                gv.iSubFrame.parseMemStr(result)
         return 
 
 #-----------------------------------------------------------------------------
@@ -371,6 +378,7 @@ class AppFrame(wx.Frame):
             self.plc3LedBt.SetBackgroundColour(wx.Colour('GRAY'))
         else:
             resultDict = json.loads(resultStr)
+            self.rspLedBt.SetBackgroundColour(wx.Colour('Green'))
             if 'Serial' in resultDict.keys():
                 colorStr = 'Green' if resultDict['Serial'] else 'GRAY'
                 self.serialLedBt.SetBackgroundColour(wx.Colour(colorStr))
@@ -470,9 +478,9 @@ class AppFrame(wx.Frame):
     def periodic(self, event):
         """ Call back every periodic time."""
         now = time.time()
-        if now - self.lastPeriodicTime['UI'] >= gv.gUpdateRate:
+        if now - self.lastPeriodicTime['GUI'] >= gv.gUpdateRate:
             #print("main frame update at %s" % str(now))
-            self.lastPeriodicTime['UI'] = now
+            self.lastPeriodicTime['GUI'] = now
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
             if gv.iDisFrame: gv.iDisFrame.updateDisplay()
@@ -494,6 +502,10 @@ class AppFrame(wx.Frame):
                 self.reConCount = 1
                 self.clieComThread.clearQ()
                 self.connectReq('Login')
+
+        if (now - self.lastPeriodicTime['Mem'] >= 10*gv.gUpdateRate) and gv.iSubFrame:
+            self.lastPeriodicTime['Mem'] = now
+            self.connectReq('GetSub', parm={'Addr':'ff00'})
             
 #-----------------------------------------------------------------------------
     def onClose(self, event):

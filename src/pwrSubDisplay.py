@@ -14,6 +14,7 @@
 #-----------------------------------------------------------------------------
 
 import wx
+import json
 import pwrGenGobal as gv
 
 DEF_POS = (300, 300)    # default show up position on screen used for local test.
@@ -106,6 +107,17 @@ class SubDisplayFrame(wx.Frame):
     
         # update the parameter indicators.
 
+    def parseMemStr(self, memStr):
+        """[summary]
+        Args:
+            memStr ([type]): [description]
+        """
+        memDict = json.loads(memStr)
+        print(memDict)
+        # Check whether the display switch state is same as the data.
+        if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
+            self.swBt.SetValue(bool(memDict['ff02']))
+            gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
 
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
@@ -113,7 +125,7 @@ class SubDisplayFrame(wx.Frame):
         Args:
             event ([wx.EVT_CHECKBOX]): [description]
         """
-        gv.iPerSImgPnl.setSwitch(self.swBt.IsChecked())
+        gv.iPerSImgPnl.setElement('Sw',self.swBt.IsChecked())
 
     #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
@@ -136,13 +148,15 @@ class PanelSub(wx.Panel):
         self.SetDoubleBuffered(True)
 
 #-----------------------------------------------------------------------------
-    def setSwitch(self, tag):
-        """ Update the substaion switch on/off state.
+    def setElement(self, tag, val):
+        """ Update the substaion' component state.
         Args:
-            tag ([bool]): true-switch on, flase - switch off.
+            tag ([String]): [String tag] example:tag= Sw, val: true-switch on, flase - switch off.
+            val ([]): [description]
         """
-        self.swOn= tag
-        self.updateDisplay()
+        if tag == "Sw":
+            self.swOn = val
+            self.updateDisplay()
 
 #-----------------------------------------------------------------------------
     def getTransIcon(self, posX, n):
