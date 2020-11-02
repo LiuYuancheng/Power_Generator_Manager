@@ -2,6 +2,10 @@
 
 **In this document we will share the valuable problems and the solution we meet during the project development as a reference menu for the new programmer who may take over this project for further development. Later we will sort the problem based on the problem <type>.**
 
+[TOC]
+
+
+
 **Format:** 
 
 **Problem**: (Situation description)
@@ -20,7 +24,7 @@
 
 ------
 
-**Problem [0]**: cmd python3 cmd not exist on window server 2019 
+###### Problem [0]: cmd python3 cmd not exist on window server 2019 
 
 **Error Message**: 
 
@@ -41,7 +45,7 @@ operable program or batch file.
 
 ------
 
-**Problem[1]**: After pip installed wxpython, can run "import wx" under py cmd terminal but py pwrGenRun.py got wx module is not installed error. 
+###### Problem[1]: After pip installed wxpython, can run "import wx" under py cmd terminal but py pwrGenRun.py got wx module is not installed error. 
 
 **Error Message**: 'wx' module is not installed. 
 
@@ -62,7 +66,7 @@ Run the program from the run.bat file.
 
 ------
 
-**Problem [2]**: snap7 running time error after pip installed snap7 lib under windows.  
+###### Problem [2]: snap7 running time error after pip installed snap7 lib under windows.  
 
 **Error Message**: 
 
@@ -95,7 +99,7 @@ C:\Works\SingtelTw\OT_Platform\Power_Generator_Mgr\lib\Windows\Win32
 
 ------
 
-**Problem [3]**: install wxpython on Ubuntu 20.04 fail.
+###### Problem [3]: install wxpython on Ubuntu 20.04 fail.
 
 **Error Message**:
 
@@ -140,7 +144,7 @@ No package 'gtk+-3.0' found
 
 ------
 
-**Problem [4]**: Successful installed wxpython but got error during import. 
+###### Problem [4]: Successful installed wxpython but got error during import. 
 
 **Error Message**:
 
@@ -172,7 +176,7 @@ sudo apt-get install git curl libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.
 
 ------
 
-**Problem [5]**:  Successful installed wxpython but got error during import. 
+###### Problem [5]:  Successful installed wxpython but got error during import. 
 
 **Error Message**:
 
@@ -218,7 +222,7 @@ Install the lib by cmd:
 
 ------
 
-**Problem [6]**: The program is running and created the background process record, but the Background process control program shows "The program is NOT running" .
+###### Problem [6]: The program is running and created the background process record, but the Background process control program shows "The program is NOT running" .
 
 **OS Platform** : Ubuntu 20.04, Raspbian. 
 
@@ -238,7 +242,7 @@ if we run the background program with "sudo" permission, if we want to check we 
 
 ------
 
-**Problem**: Set auto run when start up on CentOs Linux7 in rc.local and cause the system can not boot up
+###### Problem[7]: Set auto run when start up on CentOs Linux7 in rc.local and cause the system can not boot up
 
 **OS Platform** : CentOs Linux7
 

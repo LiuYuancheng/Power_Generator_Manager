@@ -15,8 +15,10 @@
 import time
 import json
 import re
+import csv
 import _thread # python2 thread is changed to '_thread' in python3
 import threading    # create multi-thread test case.
+from random import randint
 
 import udpCom
 import serialCom
@@ -31,6 +33,7 @@ TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
+CSV_VAL = 'pwrSubParm.csv'
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -46,6 +49,7 @@ class pwrGenClient(object):
         self.autoCtrl = False   # Gen auto control based on load number.
         self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
+
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         # try to connect to the PLCs.
@@ -341,6 +345,11 @@ class stateManager(object):
     def __init__(self):
         # Serial cmd str sequence.
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
+        self.subParms = {'Nml':[[] for a in range(6)], 
+                        'Atk':[[] for a in range(6)]}
+        self.loadCSVParm(CSV_VAL)
+
+
         # Generator state dictionary.
         self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
                             'Volt': '11.00',    # voltage (dd.dd)
@@ -383,7 +392,40 @@ class stateManager(object):
             'ff12': 0,
             'ff13': 0,
         }
-        
+
+#--------------------------------------------------------------------------
+    def printState(self):
+        """ Test function used for debug.(Print all current state.)
+        Returns:
+            [type]: [description]
+        """
+        print("self.genDict: \n %s \n" %str(self.genDict))
+        print("self.loadDict: \n %s \n" %str(self.loadDict))
+        print("self.subMemDict: \n %s \n" %str(self.subMemDict))
+        print("self.subParms: \n %s \n" %str(self.subParms))
+
+#--------------------------------------------------------------------------
+    def loadCSVParm(self, csvFile):
+        """[summary]
+        Args:
+            csvFile ([type]): [description]
+        """
+        try:
+            with open(csvFile, 'r') as file:
+                reader = csv.reader(file)
+                rowCnt = 0
+                for row in reader: # remove header.
+                    if rowCnt == 0:
+                        rowCnt +=1
+                        continue
+                    idx = int(row[1])
+                    if int(row[0]) == 0:
+                        self.subParms['Nml'][idx].append(row[2:])
+                    else:
+                        self.subParms['Atk'][idx].append(row[2:])
+        except Exception as err:
+            print("CSV file IO Error: %s" %str(err))
+
 #--------------------------------------------------------------------------
     def getGenInfo(self):
         """ Return the generator state json string."""
@@ -392,6 +434,11 @@ class stateManager(object):
 #--------------------------------------------------------------------------
     def getSubInfo(self):
         """ Return the generator state json string."""
+        loadNum = 3 if TEST_MODE else sum(self.loadDict.values())
+        valIdx = randint(0,2)
+        for i in range(14):
+            self.subMemDict["ff{:02d}".format(i)] = int(self.subParms['Nml'][loadNum][valIdx][i])
+            #print(self.subMemDict["ff{:02d}".format(i)])
         return json.dumps(self.subMemDict)
 
 #--------------------------------------------------------------------------
@@ -460,8 +507,12 @@ class CommThread(threading.Thread):
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 def main(mode=0):
-    client = pwrGenClient(None, debug=True)
-    client.mainLoop()
+    if mode == 0:
+        client = pwrGenClient(None, debug=True)
+        client.mainLoop()
+    elif mode == 1:
+        stateMgr = stateManager()
+        stateMgr.printState()
 
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
