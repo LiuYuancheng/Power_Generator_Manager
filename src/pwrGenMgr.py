@@ -345,10 +345,9 @@ class stateManager(object):
     def __init__(self):
         # Serial cmd str sequence.
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
-        self.subParms = {'Nml':[[] for a in range(6)], 
-                        'Atk':[[] for a in range(6)]}
+        self.subParms = {'Nml':[[] for a in range(4)], 
+                        'Atk':[[] for a in range(4)]}
         self.loadCSVParm(CSV_VAL)
-
 
         # Generator state dictionary.
         self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
@@ -377,20 +376,17 @@ class stateManager(object):
 
         # Substation memory dictrionary.
         self.subMemDict = {
-            'ff00': 0,  #
-            'ff01': 0,
-            'ff02': 0,
-            'ff03': 0,
-            'ff04': 0,
-            'ff05': 0,
-            'ff06': 0,
-            'ff07': 0,
-            'ff08': 0,
-            'ff09': 0,
-            'ff10': 0,
-            'ff11': 0,
-            'ff12': 0,
-            'ff13': 0,
+            'ff00': '0',  #
+            'ff01': '0',
+            'ff02': '0',
+            'ff03': '0',
+            'ff04': '0',
+            'ff05': '0',
+            'ff06': '0',
+            'ff07': '0',
+            'ff08': '0',
+            'ff09': '0',
+            'ff10': '0',
         }
 
 #--------------------------------------------------------------------------
@@ -435,9 +431,9 @@ class stateManager(object):
     def getSubInfo(self):
         """ Return the generator state json string."""
         loadNum = 3 if TEST_MODE else sum(self.loadDict.values())
-        valIdx = randint(0,2)
-        for i in range(14):
-            self.subMemDict["ff{:02d}".format(i)] = int(self.subParms['Nml'][loadNum][valIdx][i])
+        valIdx = randint(0,18)
+        for i in range(10):
+            self.subMemDict["ff{:02d}".format(i)] = self.subParms['Nml'][loadNum][valIdx][i]
             #print(self.subMemDict["ff{:02d}".format(i)])
         return json.dumps(self.subMemDict)
 

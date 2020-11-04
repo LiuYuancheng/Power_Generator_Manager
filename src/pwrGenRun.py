@@ -484,6 +484,7 @@ class AppFrame(wx.Frame):
             gv.iMotoImgPnl.updateDisplay()
             gv.iPumpImgPnl.updateDisplay()
             if gv.iDisFrame: gv.iDisFrame.updateDisplay()
+            if gv.iSubFrame: gv.iSubFrame.updateDisplay()
 
         if now - self.lastPeriodicTime['State'] >= 2*gv.gUpdateRate:
             self.lastPeriodicTime['State'] = now
@@ -503,7 +504,7 @@ class AppFrame(wx.Frame):
                 self.clieComThread.clearQ()
                 self.connectReq('Login')
 
-        if (now - self.lastPeriodicTime['Mem'] >= 10*gv.gUpdateRate) and gv.iSubFrame:
+        if (now - self.lastPeriodicTime['Mem'] >= 5*gv.gUpdateRate) and gv.iSubFrame:
             self.lastPeriodicTime['Mem'] = now
             self.connectReq('GetSub', parm={'Addr':'ff00'})
             

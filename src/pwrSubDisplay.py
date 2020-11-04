@@ -34,6 +34,7 @@ class SubDisplayFrame(wx.Frame):
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
         self.SetTransparent(gv.gTranspPct*255//100)
+        self.statusbar = self.CreateStatusBar()
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Show()
@@ -42,7 +43,7 @@ class SubDisplayFrame(wx.Frame):
     def buidUISizer(self):
         """ Build the UI and return the wx.sizer hold all the UI components. """
         sizer = wx.BoxSizer(wx.VERTICAL)
-        elemSize= (40,20)
+        #elemSize= (40,20)
         # build the upper panel.
         self.upPnl = wx.Panel(self, size=(400, 50))
         self.upPnl.SetBackgroundColour(wx.Colour('Gray'))
@@ -66,17 +67,17 @@ class SubDisplayFrame(wx.Frame):
         sizer.Add(gv.iPerSImgPnl, flag=wx.CENTER, border=2)
 
         # build the bottum panel.
-        self.downPnl = wx.Panel(self, size=(400, 50))
+        self.downPnl = wx.Panel(self, size=(400, 80))
         self.downPnl.SetBackgroundColour(wx.Colour('Gray'))
-        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_I [0.0]',  pos=(5, 10))
+        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pk:0\nQk:0',style=wx.BU_LEFT, size=(100,40), pos=(5, 2))
         self.InjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.InjBt.SetToolTip('Injection measurement : \nInj_I = Ing-P[k],Q[k]')
 
-        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Flows [0.0]',  pos=(200, 5))
+        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pkm:0 Qkm:0\nPmk:0 Qmk:0', style=wx.BU_LEFT,size=(160,40), pos=(120, 2))
         self.FmjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.FmjBt.SetToolTip('Flow measurements: \n P[km], Q[km] \n P[mk], Q[mk]')
 
-        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Inj_O [0.0]',  pos=(320, 10))
+        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Pm: 0\nQm:0', style=wx.BU_LEFT, size=(90,40),  pos=(300, 2))
         self.Inj2Bt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.Inj2Bt.SetToolTip('Injection measurement : \nInj_O = Ing-P[m],Q[m]')
         sizer.Add(self.downPnl, flag=wx.CENTER, border=2)
@@ -113,11 +114,24 @@ class SubDisplayFrame(wx.Frame):
             memStr ([type]): [description]
         """
         memDict = json.loads(memStr)
-        print(memDict)
+        self.statusbar.SetStatusText("M:%s" %str(memDict))
         # Check whether the display switch state is same as the data.
-        if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
-            self.swBt.SetValue(bool(memDict['ff02']))
-            gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
+        #if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
+        #    self.swBt.SetValue(bool(memDict['ff02']))
+        #    gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
+        self.vkBt.SetLabel("Vk:%s" %memDict['ff08'])
+        self.InjBt.SetLabel("Pk:%s\nQk:%s" %(memDict['ff04'], memDict['ff05']))
+        self.tkmBt.SetLabel("Tkm: - ")
+        if gv.iPerSImgPnl.swOn:
+            self.vmBt.SetLabel("Vm:%s" %memDict['ff09'])
+            self.FmjBt.SetLabel("Pkm:%s Qkm:%s\nPmk:%s Qmk:%s" %(memDict['ff00'], memDict['ff01'], memDict['ff03'], memDict['ff04']))
+            #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" %(memDict['ff04'], memDict['ff05']))
+            self.Inj2Bt.SetLabel("Pm:%s\nQm:%s" %(memDict['ff06'], memDict['ff07']))
+        else: 
+            self.vmBt.SetLabel("Vm:%s" % '0')
+            self.FmjBt.SetLabel("Pkm:%s Qkm:%s\nPmk:%s Qmk:%s" % ('0', '0', '0', '0'))
+            #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
+            self.Inj2Bt.SetLabel("Pm:%s\n-Qm:%s" % ('0', '0'))
 
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
@@ -143,6 +157,8 @@ class PanelSub(wx.Panel):
         self.SetBackgroundColour(wx.Colour('Gray'))
         self.panelSize = panelSize
         self.swOn = False
+        self.toggleF = True #display toggle flag.
+        self.flowCount = 0  #flow animation count
         # Setup the paint display function.
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.SetDoubleBuffered(True)
@@ -190,14 +206,17 @@ class PanelSub(wx.Panel):
         
         print("In paint function.")
 
+        lineStyle = wx.PENSTYLE_SOLID
         # Draw the background.
-        dc.SetPen(wx.Pen('Green', width=2, style=wx.PENSTYLE_SOLID))
+        dc.SetPen(wx.Pen('Green', width=2, style=lineStyle))
         dc.DrawLine(40, 0, 40, 80)
         dc.DrawLine(0, 40, 100, 40)
 
+        #pts = ((f))
+
         # Switch
         color = 'Green' if self.swOn else 'White'
-        dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         dc.DrawCircle(100, 40, 3)
         swY = 40 if self.swOn else 30
         dc.DrawLine(100, 40, 140, swY)
@@ -205,15 +224,15 @@ class PanelSub(wx.Panel):
         # translater L
         dc.DrawLine(140, 40, 185, 40)
         #dc.DrawLines(self.getTransIcon(220, 6))
-        gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        gc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         path.AddCircle(200, 40, 15)
 
         # translater R
         color = 'Blue' if self.swOn else 'White'
-        dc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         dc.DrawLine(235, 40, 400, 40)
         #dc.DrawLines(self.getTransIcon(240, 10))
-        gc.SetPen(wx.Pen(color, width=2, style=wx.PENSTYLE_SOLID))
+        gc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         path.AddCircle(220, 40, 15)
 
         dc.DrawLine(360, 0, 360, 80)
@@ -221,10 +240,17 @@ class PanelSub(wx.Panel):
         # Reference line
         dc.SetPen(wx.Pen('White', width=1, style=wx.PENSTYLE_DOT_DASH))
         dc.DrawLine(100, 40, 100, 0)
-        dc.DrawLine(270, 40, 270, 80)
+        dc.DrawLine(250, 40, 250, 80)
 
         path.CloseSubpath()
         gc.DrawPath(path,0)
+
+        dc.SetPen(wx.Pen('Black', width=1, style=wx.PENSTYLE_SOLID))
+        dc.DrawText("Inj_I:", 10, 60)
+        dc.DrawText("Flow:", 130, 60)
+        dc.DrawText("Inj_O:", 310, 60)
+        # change the display toggle flag
+        self.toggleF = not self.toggleF
 
 #-----------------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
