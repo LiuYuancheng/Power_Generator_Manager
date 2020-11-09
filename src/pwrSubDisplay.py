@@ -252,6 +252,15 @@ class PanelSub(wx.Panel):
         # change the display toggle flag
         self.toggleF = not self.toggleF
 
+        # draw the pwr flow arrow
+        limit = 400 if self.swOn else 100
+        if self.flowCount > limit: self.flowCount = 0
+        color = 'Green' if self.flowCount < 210 else 'Blue'                 
+        dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
+        dc.DrawLine(self.flowCount+10, 40, self.flowCount, 45)
+        dc.DrawLine(self.flowCount+10, 40, self.flowCount, 35)
+        self.flowCount += 20
+
 #-----------------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
         """ Set/Update the display: if called as updateDisplay() the function will 
