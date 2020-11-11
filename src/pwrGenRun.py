@@ -26,7 +26,7 @@ import pwrGenPanel as pl
 PERIODIC = 250  # main UI loop call back period.(ms)
 CMD_QSZ = 10    # communication cmd queue size.
 RECON_T = 10    # Re-connect time interval count.
-TEST_MD = True
+TEST_MD = False
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 #-----------------------------------------------------------------------------

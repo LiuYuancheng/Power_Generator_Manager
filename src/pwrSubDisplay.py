@@ -47,16 +47,16 @@ class SubDisplayFrame(wx.Frame):
         # build the upper panel.
         self.upPnl = wx.Panel(self, size=(400, 50))
         self.upPnl.SetBackgroundColour(wx.Colour('Gray'))
-        self.vkBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vk [0.0]', pos=(5, 15))
+        self.vkBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vk [0.0]', style=wx.BU_LEFT,size=(90,20), pos=(5, 15))
         self.vkBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.vkBt.SetToolTip('Voltage measurement: k ')
 
         self.swBt = wx.CheckBox(
             self.upPnl, wx.ID_ANY, label='Switch', pos=(100, 25))
         self.swBt.Bind(wx.EVT_CHECKBOX, self.turnSw)
-        self.tkmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Tkm [0.0]',  pos=(200, 15))
+        self.tkmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Tkm [0.0]', style=wx.BU_LEFT, pos=(200, 15))
         self.tkmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
-        self.vmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vm [0.0]',  pos=(320, 15))
+        self.vmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Vm [0.0]',style=wx.BU_LEFT, pos=(300, 15))
         self.vmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.vmBt.SetToolTip('Voltage measurement: m ')
 
@@ -75,7 +75,7 @@ class SubDisplayFrame(wx.Frame):
 
         self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pkm:0 Qkm:0\nPmk:0 Qmk:0', style=wx.BU_LEFT,size=(160,40), pos=(120, 2))
         self.FmjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
-        self.FmjBt.SetToolTip('Flow measurements: \n P[km], Q[km] \n P[mk], Q[mk]')
+        self.FmjBt.SetToolTip('Flow measurements: \n P[km], P[mk]\n,Q[km], Q[mk]')
 
         self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Pm: 0\nQm:0', style=wx.BU_LEFT, size=(90,40),  pos=(300, 2))
         self.Inj2Bt.Bind(wx.EVT_BUTTON, self.onParmChange)
@@ -119,17 +119,17 @@ class SubDisplayFrame(wx.Frame):
         #if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
         #    self.swBt.SetValue(bool(memDict['ff02']))
         #    gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
-        self.vkBt.SetLabel("Vk:%s" %memDict['ff08'])
-        self.InjBt.SetLabel("Pk:%s\nQk:%s" %(memDict['ff04'], memDict['ff05']))
+        self.vkBt.SetLabel("Vk:%.7s" %memDict['ff08'])
+        self.InjBt.SetLabel("Pk:%.7s\nQk:%.7s" %(memDict['ff04'], memDict['ff05']))
         self.tkmBt.SetLabel("Tkm: - ")
         if gv.iPerSImgPnl.swOn:
-            self.vmBt.SetLabel("Vm:%s" %memDict['ff09'])
-            self.FmjBt.SetLabel("Pkm:%s Qkm:%s\nPmk:%s Qmk:%s" %(memDict['ff00'], memDict['ff01'], memDict['ff03'], memDict['ff04']))
+            self.vmBt.SetLabel("Vm:%.7s" %memDict['ff09'])
+            self.FmjBt.SetLabel("Pkm:%.5s Pmk:%.6s\nQkm:%.5s Qmk:%.6s" %(memDict['ff00'], memDict['ff03'], memDict['ff01'], memDict['ff04']))
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" %(memDict['ff04'], memDict['ff05']))
-            self.Inj2Bt.SetLabel("Pm:%s\nQm:%s" %(memDict['ff06'], memDict['ff07']))
+            self.Inj2Bt.SetLabel("Pm:%.7s\nQm:%.7s" %(memDict['ff06'], memDict['ff07']))
         else: 
             self.vmBt.SetLabel("Vm:%s" % '0')
-            self.FmjBt.SetLabel("Pkm:%s Qkm:%s\nPmk:%s Qmk:%s" % ('0', '0', '0', '0'))
+            self.FmjBt.SetLabel("Pkm:%s Pmk:%s\nQkm:%s Qmk:%s" % ('0', '0', '0', '0'))
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
             self.Inj2Bt.SetLabel("Pm:%s\n-Qm:%s" % ('0', '0'))
 
@@ -255,11 +255,18 @@ class PanelSub(wx.Panel):
         # draw the pwr flow arrow
         limit = 400 if self.swOn else 100
         if self.flowCount > limit: self.flowCount = 0
-        color = 'Green' if self.flowCount < 210 else 'Blue'                 
-        dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
-        dc.DrawLine(self.flowCount+10, 40, self.flowCount, 45)
-        dc.DrawLine(self.flowCount+10, 40, self.flowCount, 35)
-        self.flowCount += 20
+
+        dc.SetPen(wx.Pen('black', width=1, style=lineStyle))
+        #dc.DrawLine(self.flowCount+10, 40, self.flowCount, 45)
+        #dc.DrawLine(self.flowCount+10, 40, self.flowCount, 35)
+        #dc.DrawRectangle(self.flowCount, 36, 8, 8)
+        for i in range(self.flowCount//40+1):
+            posX = max(0,self.flowCount - i*40)
+            color = 'Green' if posX < 210 else 'Blue'
+            dc.SetBrush(wx.Brush(color))
+            dc.DrawRectangle(posX, 36, 8, 8)
+        
+        self.flowCount += 10
 
 #-----------------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):

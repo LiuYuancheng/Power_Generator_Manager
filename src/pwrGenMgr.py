@@ -12,6 +12,7 @@
 # License:     YC
 #--------------------------------------------------------------------------
 
+import os
 import time
 import json
 import re
@@ -28,7 +29,7 @@ import S7PLC1200 as s71200
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
-TEST_MODE = True   # Local test mode flag.
+TEST_MODE = False   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
@@ -56,7 +57,7 @@ class pwrGenClient(object):
         self.plc1 = m221.M221(PLC1_IP)
         self.plc2 = s71200.S7PLC1200(PLC2_IP)
         self.plc3 = m221.M221(PLC3_IP)
-        self.reConnectCount = 10 if self.plc1.connected and self.plc2.connected and self.plc3.connected else 0
+        self.reConnectCount = 0 if self.plc1.connected and self.plc2.connected and self.plc3.connected else 10
         # Init the UDP server.
         # self.server = udpCom.udpServer(None, UDP_PORT)
         self.servThread = CommThread(self, 0, "server thread")
@@ -346,9 +347,9 @@ class stateManager(object):
         # Serial cmd str sequence.
         self.serialSqu = ('Freq', 'Volt', 'Fled', 'Vled', 'Mled', 'Pled', 'Smok', 'Sirn')
         self.subParms = {'Nml':[[] for a in range(4)], 
-                        'Atk':[[] for a in range(4)]}
-        self.loadCSVParm(CSV_VAL)
-
+                        'Atk':[[] for a in range(4)]}        
+        self.loadCSVParm(os.path.join(os.path.dirname(__file__), CSV_VAL))
+        
         # Generator state dictionary.
         self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
                             'Volt': '11.00',    # voltage (dd.dd)
@@ -430,7 +431,7 @@ class stateManager(object):
 #--------------------------------------------------------------------------
     def getSubInfo(self):
         """ Return the generator state json string."""
-        loadNum = 3 if TEST_MODE else sum(self.loadDict.values())
+        loadNum = 3 if TEST_MODE else sum((self.loadDict['Airp'], self.loadDict['Stat'], self.loadDict['TrkA']))
         valIdx = randint(0,18)
         for i in range(10):
             self.subMemDict["ff{:02d}".format(i)] = self.subParms['Nml'][loadNum][valIdx][i]
