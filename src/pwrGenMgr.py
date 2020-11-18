@@ -135,8 +135,10 @@ class pwrGenClient(object):
         """
         if self.debug: print("Incomming message: %s" %str(msg))
         if msg == b'' or msg == b'end' or msg == b'logout': return None  # get at program terminate signal.
-        if msg.decode('utf-8') == 'A;1':
-            _thread.start_new_thread( self.startAttack, ("Thread-1", ) )
+        if msg.decode('utf-8') == 'A;1' or msg.decode('utf-8') == 'A;3' :
+            _thread.start_new_thread( self.startAttack, (msg.decode('utf-8'), ) )
+            return None
+        if msg.decode('utf-8') == 'A;0':
             return None
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         msgDict = json.loads(msg.decode('utf-8'))
@@ -310,33 +312,62 @@ class pwrGenClient(object):
 #--------------------------------------------------------------------------
     def startAttack(self, threadName):
         """ Simulate the attack situation."""
-        self.autoCtrl = 0   # Turn off the auto control.
-        time.sleep(10)
-        self.autoCtrl = False   # turn off the auto control.
-        msgStr = "52.00:11.00:amber:amber:amber:amber:off:on"
-        self.serialComm.write(msgStr.encode('utf-8'))
-        genDict = {'Freq': '52.00',
-                   'Volt': '11.00',
-                   'Fled': 'amber',
-                   'Vled': 'amber',
-                   'Mled': 'amber',
-                   'Pled': 'amber',
-                   'Smok': 'off',
-                   'Sirn': 'on',}
-        self.stateMgr.updateGenSerState(genDict)
-        time.sleep(5)
+        if threadName == 'A;1':
+            self.autoCtrl = 0   # Turn off the auto control.
+            time.sleep(10)
+            self.autoCtrl = False   # turn off the auto control.
+            msgStr = "52.00:11.00:amber:amber:amber:amber:off:on"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            genDict = {'Freq': '52.00',
+                    'Volt': '11.00',
+                    'Fled': 'amber',
+                    'Vled': 'amber',
+                    'Mled': 'amber',
+                    'Pled': 'amber',
+                    'Smok': 'off',
+                    'Sirn': 'on',}
+            self.stateMgr.updateGenSerState(genDict)
+            time.sleep(5)
 
-        msgStr = "50.00:00.00:red:red:red:red:off:off"
-        self.serialComm.write(msgStr.encode('utf-8'))
-        genDict = {'Freq': '52.00',
-                   'Volt': '00.00',
-                   'Fled': 'red',
-                   'Vled': 'red',
-                   'Mled': 'red',
-                   'Pled': 'red',
-                   'Smok': 'off',
-                   'Sirn': 'off',}
-        self.stateMgr.updateGenSerState(genDict)
+            msgStr = "50.00:00.00:red:red:red:red:off:off"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            genDict = {'Freq': '52.00',
+                    'Volt': '00.00',
+                    'Fled': 'red',
+                    'Vled': 'red',
+                    'Mled': 'red',
+                    'Pled': 'red',
+                    'Smok': 'off',
+                    'Sirn': 'off',}
+            self.stateMgr.updateGenSerState(genDict)
+            return None
+        elif threadName == 'A;3':
+            print(">>> Start the Substation attack.")
+            msgStr = "49.89:11.00:red:red:red:red:off:on"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            time.sleep(1)
+            if self.plc1.connected and self.plc3.connected:
+                self.plc1.writeMem('M60', 1)
+                time.sleep(1)
+                for i in range(10):
+                    val = i%2
+                    self.plc1.writeMem('M0', val)
+                    time.sleep(0.5)
+                    self.plc1.writeMem('M10', val)
+                    time.sleep(0.5)
+                    self.plc3.writeMem('M10', val)
+                    time.sleep(0.5)
+            msgStr = "50.00:11.00:red:red:red:red:off:off"
+            self.serialComm.write(msgStr.encode('utf-8'))
+            genDict = {'Freq': '52.00',
+                    'Volt': '00.00',
+                    'Fled': 'red',
+                    'Vled': 'red',
+                    'Mled': 'red',
+                    'Pled': 'red',
+                    'Smok': 'off',
+                    'Sirn': 'off',}
+            self.stateMgr.updateGenSerState(genDict)
         return None
 
 #--------------------------------------------------------------------------
