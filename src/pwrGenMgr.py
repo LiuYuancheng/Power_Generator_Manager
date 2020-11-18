@@ -50,7 +50,9 @@ class pwrGenClient(object):
         self.autoCtrl = False   # Gen auto control based on load number.
         self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
-
+        self.atkLocker = False  # lock the new incoming attack request if doing attack simulation.
+        self.mainPwrSet = False # Wheter we need to set/update main power in the next around of loop.  
+        self.mainPwrStr = 'on'  # Main power set string 'on'/'off'
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         # try to connect to the PLCs.
@@ -85,6 +87,10 @@ class pwrGenClient(object):
         while self.bgCtrler.bgRun():
             # Get the 3 PLC load state:
             if not TEST_MODE:
+                if self.mainPwrSet:
+                    self.setMainPwr(self.mainPwrStr)
+                    self.mainPwrSet = False
+                if self.atkLocker:continue # dont operate the plc when attack happens
                 self.getLoadState()
                 if self.reConnectCount > 0:
                     self.reConnectCount -= 1
@@ -135,13 +141,18 @@ class pwrGenClient(object):
         """
         if self.debug: print("Incomming message: %s" %str(msg))
         if msg == b'' or msg == b'end' or msg == b'logout': return None  # get at program terminate signal.
-        if msg.decode('utf-8') == 'A;1' or msg.decode('utf-8') == 'A;3' :
+        # message String
+        msgStr = msg.decode('utf-8')
+
+        if msgStr == 'A;1' or msgStr == 'A;3':
+            if self.atkLocker: return None
             _thread.start_new_thread( self.startAttack, (msg.decode('utf-8'), ) )
             return None
-        if msg.decode('utf-8') == 'A;0':
+        if msgStr == 'A;0':
+            self.stopAttack()
             return None
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
-        msgDict = json.loads(msg.decode('utf-8'))
+        msgDict = json.loads(msgStr)
         if msgDict['Cmd'] == 'Get':
             # state get request.
             if msgDict['Parm'] == 'Con':
@@ -265,10 +276,37 @@ class pwrGenClient(object):
         msgStr = ':'.join((genDict['Freq'], genDict['Volt'], genDict['Fled'], genDict['Vled'],  genDict['Mled'], genDict['Pled'], genDict['Smok'], genDict['Sirn']))
         self.serialComm.write(msgStr.encode('utf-8'))
         self.stateMgr.updateGenSerState(genDict)
+#--------------------------------------------------------------------------
+    def setMainPwrStr(self, val):
+        self.mainPwrSet = True
+        self.mainPwrStr = val
 
 #--------------------------------------------------------------------------
     def setMainPwr(self, val):
         """ Set the system main power PLC3[M6]. 0-off, 1-on."""
+        self.autoCtrl = False
+        pwrVal = 1 if val == 'on' else 0
+        ledVal = 0 if val == 'on' else 1
+        plc2Val = True if val == 'on' else False
+        if self.plc1.connected:
+            self.plc1.writeMem('M0', pwrVal)
+            time.sleep(0.1)
+            self.plc1.writeMem('M10', pwrVal)
+            time.sleep(0.1)
+            self.plc1.writeMem('M60', ledVal)
+            time.sleep(0.1) 
+        if self.plc2.connected:
+            self.plc2.writeMem('qx0.0', plc2Val)
+            time.sleep(0.1) 
+            self.plc2.writeMem('qx0.2', not plc2Val)
+            time.sleep(0.1)
+        if self.plc3.connected:
+            self.plc3.writeMem('M10', pwrVal)
+            time.sleep(0.1)
+            self.plc3.writeMem('M60', ledVal)
+            time.sleep(0.1)
+        return
+        # below is the one using new PLC lider diagram follow the function introduction.
         if not self.plc3.connected:
             if self.debug: print('PLC3 not connected, can not set system main power.')
             return
@@ -312,6 +350,8 @@ class pwrGenClient(object):
 #--------------------------------------------------------------------------
     def startAttack(self, threadName):
         """ Simulate the attack situation."""
+        self.atkLocker = True
+        self.autoCtrl = False
         if threadName == 'A;1':
             self.autoCtrl = 0   # Turn off the auto control.
             time.sleep(10)
@@ -340,27 +380,37 @@ class pwrGenClient(object):
                     'Smok': 'off',
                     'Sirn': 'off',}
             self.stateMgr.updateGenSerState(genDict)
+            self.atkLocker = False
+            self.autoCtrl = True
             return None
         elif threadName == 'A;3':
             print(">>> Start the Substation attack.")
             msgStr = "49.89:11.00:red:red:red:red:off:on"
             self.serialComm.write(msgStr.encode('utf-8'))
             time.sleep(1)
-            if self.plc1.connected and self.plc3.connected:
-                self.plc1.writeMem('M60', 1)
-                time.sleep(1)
-                for i in range(10):
-                    val = i%2
+            if self.plc1.connected: self.plc1.writeMem('M60', 1)               
+            time.sleep(1)
+            for i in range(15):
+                val = i%2
+                if self.plc1.connected:
                     self.plc1.writeMem('M0', val)
-                    time.sleep(0.5)
+                    time.sleep(0.3)
                     self.plc1.writeMem('M10', val)
+                    time.sleep(0.3)
+                if self.plc2.connected:
+                    v = True if val == 1 else False
+                    self.plc2.writeMem('qx0.0', v)
+                    time.sleep(0.3)
+                if self.plc3.connected:
+                    self.plc3.writeMem('M10', 0)
                     time.sleep(0.5)
-                    self.plc3.writeMem('M10', val)
-                    time.sleep(0.5)
-            msgStr = "50.00:11.00:red:red:red:red:off:off"
+                    self.plc3.writeMem('M10', 1)
+            time.sleep(0.3)
+            self.plc3.writeMem('M10', 0)
+            msgStr = "52.00:11.00:red:red:red:red:off:off"
             self.serialComm.write(msgStr.encode('utf-8'))
             genDict = {'Freq': '52.00',
-                    'Volt': '00.00',
+                    'Volt': '11.00',
                     'Fled': 'red',
                     'Vled': 'red',
                     'Mled': 'red',
@@ -368,7 +418,38 @@ class pwrGenClient(object):
                     'Smok': 'off',
                     'Sirn': 'off',}
             self.stateMgr.updateGenSerState(genDict)
+            self.atkLocker = False
+            # self.autoCtrl = True
         return None
+
+#--------------------------------------------------------------------------
+    def stopAttack(self):
+        """ recover the PLC and power generator state after attack.
+        """
+        # Recover the power generator
+        self.atkLocker = True
+        msgStr = "52.00:11.00:green:green:green:green:off:off"
+        self.serialComm.write(msgStr.encode('utf-8'))
+        genDict = {'Freq': '52.00',
+                    'Volt': '11.00',
+                    'Fled': 'green',
+                    'Vled': 'green',
+                    'Mled': 'green',
+                    'Pled': 'green',
+                    'Smok': 'off',
+                    'Sirn': 'off',}
+        self.stateMgr.updateGenSerState(genDict)
+                
+        # Revocer the PLC state.
+        if self.plc1.connected:
+            self.plc1.writeMem('M0', 1)
+            self.plc1.writeMem('M10', 1)
+            self.plc1.writeMem('M60', 0)   
+        if self.plc2.connected:
+            self.plc2.writeMem('qx0.0', True)
+        if self.plc3.connected:
+            self.plc3.writeMem('M10', 1)
+        self.atkLocker = False
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------

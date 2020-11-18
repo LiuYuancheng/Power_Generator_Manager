@@ -53,6 +53,7 @@ class SubDisplayFrame(wx.Frame):
 
         self.swBt = wx.CheckBox(
             self.upPnl, wx.ID_ANY, label='Switch', pos=(100, 25))
+        self.swBt.SetValue(1)
         self.swBt.Bind(wx.EVT_CHECKBOX, self.turnSw)
         self.tkmBt = wx.Button(self.upPnl, wx.ID_ANY, 'Tkm [0.0]', style=wx.BU_LEFT, pos=(200, 15))
         self.tkmBt.Bind(wx.EVT_BUTTON, self.onParmChange)
@@ -140,6 +141,10 @@ class SubDisplayFrame(wx.Frame):
             event ([wx.EVT_CHECKBOX]): [description]
         """
         gv.iPerSImgPnl.setElement('Sw',self.swBt.IsChecked())
+        if gv.iMainFrame:
+            val = 'on' if self.swBt.IsChecked() else 'off'
+            plcDict = {'Mpwr':val}
+            gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
 
     #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
@@ -156,7 +161,7 @@ class PanelSub(wx.Panel):
         #self.SetBackgroundColour(wx.Colour(200, 200, 200))
         self.SetBackgroundColour(wx.Colour('Gray'))
         self.panelSize = panelSize
-        self.swOn = False
+        self.swOn = True
         self.toggleF = True #display toggle flag.
         self.flowCount = 0  #flow animation count
         # Setup the paint display function.
