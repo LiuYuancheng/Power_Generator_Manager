@@ -36,12 +36,27 @@ PLC2_IP = '192.168.10.73'
 PLC3_IP = '192.168.10.71'
 CSV_VAL = 'pwrSubParm.csv'
 
+# PLC output connection map table:
+# PLC 0 [schneider M221]: 
+#   M10 -> Q0.0 Airport LED
+#   M0 -> Q0.1 Power Plant
+#   M60 -> Q0.2 Industrial LED
+# PLC 1 [seimens S7-1200]
+#   Qx0.0-> Q0.0 station + sensor
+#   Qx0.1-> Q0.1 level crossing pwr
+#   Qx0.2-> Q0.2 Resident LED
+# PLC 2 [schneider M221]:
+#   M0  -> Q0.0 fork turnout
+#   M10 -> Q0.1 track A pwr
+#   M20 -> Q0.2 track B pwr
+#   M60 -> Q0.3 city LED
+
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class pwrGenClient(object):
-    """ Client program running on Raspberry PI or nomral computer to connect
-        to PLC and Arduino. A UDP echo server will also be inited to response
-        the UI control's request. 
+    """ Client program running on Raspberry PI or normal computer to connect
+        to PLC and Arduino. A UDP echo server running in sub-thread will also 
+        be inited to response the UI control's request. 
     """
     def __init__(self, parent, debug=True):
         # Set the load number.
@@ -66,8 +81,7 @@ class pwrGenClient(object):
 
         # init the plat form state:
         if self.serialComm and not TEST_MODE:
-            msgStr = "50.00:11.00:green:green:green:green:slow:off"
-            self.serialComm.write(msgStr.encode('utf-8'))
+            self.setGenState("50.00:11.00:green:green:green:green:slow:off")
         # Init the state manager.
         self.stateMgr = stateManager()
         print('Init finished [Test mode:%s], connection state :\n' %str(TEST_MODE))
@@ -112,8 +126,7 @@ class pwrGenClient(object):
 
 #--------------------------------------------------------------------------
     def plcReconnect(self):
-        """ Try to reconnect the PLC if the plc is not connect at the beginning.
-        """
+        """ Try to reconnect the PLC if the plc is not connect."""
         if self.plc1 is None or (not self.plc1.connected):
             if not self.plc1 is None:
                 self.plc1.disconnect()  # disconnect to release the socket.
@@ -140,18 +153,20 @@ class pwrGenClient(object):
                     'Parm': {}}
         """
         if self.debug: print("Incomming message: %s" %str(msg))
-        if msg == b'' or msg == b'end' or msg == b'logout': return None  # get at program terminate signal.
+        if msg == b'' or msg == b'end' or msg == b'logout':
+            return None  # get at program terminate signal.
         # message String
         msgStr = msg.decode('utf-8')
-
+        # Implement cyber attack start and stop.
         if msgStr == 'A;1' or msgStr == 'A;3':
             if self.atkLocker: return None
-            _thread.start_new_thread( self.startAttack, (msg.decode('utf-8'), ) )
+            _thread.start_new_thread(self.startAttack, (msgStr,))
             return None
         if msgStr == 'A;0':
             self.stopAttack()
             return None
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
+        # Handle the control reqest from the UI.
         msgDict = json.loads(msgStr)
         if msgDict['Cmd'] == 'Get':
             # state get request.
@@ -263,19 +278,11 @@ class pwrGenClient(object):
         self.loadNum  = loadCount
         freqList= ['52.00', '51.20', '50.80', '50.40', '50.00', '50.00', '50.00', '49.8']
         sirenSt = 'on' if self.loadNum < 2 else 'off'
-        color = 'red' if self.loadNum < 5 else 'green'
+        color = 'red' if self.loadNum < 4 else 'green'
         if self.loadNum == 7: color = 'amber'
-        genDict = {'Freq': freqList[self.loadNum ],
-            'Volt': '11.00',
-            'Fled': color,
-            'Vled': 'green',
-            'Mled': 'red',
-            'Pled': 'red',
-            'Smok': 'fast',
-            'Sirn': sirenSt,}
-        msgStr = ':'.join((genDict['Freq'], genDict['Volt'], genDict['Fled'], genDict['Vled'],  genDict['Mled'], genDict['Pled'], genDict['Smok'], genDict['Sirn']))
-        self.serialComm.write(msgStr.encode('utf-8'))
-        self.stateMgr.updateGenSerState(genDict)
+        msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color,color,color, 'fast', sirenSt))
+        self.setGenState(msgStr)
+        
 #--------------------------------------------------------------------------
     def setMainPwrStr(self, val):
         self.mainPwrSet = True
@@ -348,45 +355,49 @@ class pwrGenClient(object):
         self.plc3.writeMem('M5', parm)
 
 #--------------------------------------------------------------------------
+    def setGenState(self, stateStr):
+        """ Set the generator working state.
+        Args:
+            stateStr ([str]): generator state string:
+            Freq:Volt:Fled:Vled:Mled:Pled:Smok:Sirn
+            example: 52.00:11.00:amber:amber:amber:amber:off:on"
+        Returns:
+            [None]: [description]
+        """
+        if self.serialComm:
+            self.serialComm.write(stateStr.encode('utf-8'))
+            valList = stateStr.split(':')
+            if len(valList) != 8:
+                print("Error: serialComm str parameter missing: %s" %stateStr)
+                return None
+            else:
+                genDict = {'Freq': valList[0],
+                           'Volt': valList[1],
+                           'Fled': valList[2],
+                           'Vled': valList[3],
+                           'Mled': valList[4],
+                           'Pled': valList[5],
+                           'Smok': valList[6],
+                           'Sirn': valList[7]}
+                self.stateMgr.updateGenSerState(genDict)
+
+#--------------------------------------------------------------------------
     def startAttack(self, threadName):
         """ Simulate the attack situation."""
-        self.atkLocker = True
-        self.autoCtrl = False
+        self.atkLocker = True   # Lock the attack flag.
+        self.autoCtrl = False   # disable the auto control.
         if threadName == 'A;1':
-            self.autoCtrl = 0   # Turn off the auto control.
+            # Create the generator alert.
             time.sleep(10)
-            self.autoCtrl = False   # turn off the auto control.
-            msgStr = "52.00:11.00:amber:amber:amber:amber:off:on"
-            self.serialComm.write(msgStr.encode('utf-8'))
-            genDict = {'Freq': '52.00',
-                    'Volt': '11.00',
-                    'Fled': 'amber',
-                    'Vled': 'amber',
-                    'Mled': 'amber',
-                    'Pled': 'amber',
-                    'Smok': 'off',
-                    'Sirn': 'on',}
-            self.stateMgr.updateGenSerState(genDict)
+            self.setGenState("52.00:11.00:amber:amber:amber:amber:off:on")
             time.sleep(5)
-
-            msgStr = "50.00:00.00:red:red:red:red:off:off"
-            self.serialComm.write(msgStr.encode('utf-8'))
-            genDict = {'Freq': '52.00',
-                    'Volt': '00.00',
-                    'Fled': 'red',
-                    'Vled': 'red',
-                    'Mled': 'red',
-                    'Pled': 'red',
-                    'Smok': 'off',
-                    'Sirn': 'off',}
-            self.stateMgr.updateGenSerState(genDict)
-            self.atkLocker = False
+            # Show the generator down situation.
+            self.setGenState("50.00:00.00:red:red:red:red:off:off")
             self.autoCtrl = True
             return None
         elif threadName == 'A;3':
             print(">>> Start the Substation attack.")
-            msgStr = "49.89:11.00:red:red:red:red:off:on"
-            self.serialComm.write(msgStr.encode('utf-8'))
+            self.setGenState("49.89:11.00:red:red:red:red:off:on")
             time.sleep(1)
             if self.plc1.connected: self.plc1.writeMem('M60', 1)               
             time.sleep(1)
@@ -407,19 +418,9 @@ class pwrGenClient(object):
                     self.plc3.writeMem('M10', 1)
             time.sleep(0.3)
             self.plc3.writeMem('M10', 0)
-            msgStr = "52.00:11.00:red:red:red:red:off:off"
-            self.serialComm.write(msgStr.encode('utf-8'))
-            genDict = {'Freq': '52.00',
-                    'Volt': '11.00',
-                    'Fled': 'red',
-                    'Vled': 'red',
-                    'Mled': 'red',
-                    'Pled': 'red',
-                    'Smok': 'off',
-                    'Sirn': 'off',}
-            self.stateMgr.updateGenSerState(genDict)
-            self.atkLocker = False
+            self.setGenState("52.00:11.00:red:red:red:red:off:off")
             # self.autoCtrl = True
+        self.atkLocker = False
         return None
 
 #--------------------------------------------------------------------------
@@ -428,18 +429,7 @@ class pwrGenClient(object):
         """
         # Recover the power generator
         self.atkLocker = True
-        msgStr = "52.00:11.00:green:green:green:green:off:off"
-        self.serialComm.write(msgStr.encode('utf-8'))
-        genDict = {'Freq': '52.00',
-                    'Volt': '11.00',
-                    'Fled': 'green',
-                    'Vled': 'green',
-                    'Mled': 'green',
-                    'Pled': 'green',
-                    'Smok': 'off',
-                    'Sirn': 'off',}
-        self.stateMgr.updateGenSerState(genDict)
-                
+        self.setGenState("52.00:11.00:green:green:green:green:off:off")                
         # Revocer the PLC state.
         if self.plc1.connected:
             self.plc1.writeMem('M0', 1)
