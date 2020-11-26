@@ -66,6 +66,7 @@ class pwrGenClient(object):
         self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
         self.atkLocker = False  # lock the new incoming attack request if doing attack simulation.
+        self.subTHActFlag  = False # Threshold active flag.
         self.mainPwrSet = False # Wheter we need to set/update main power in the next around of loop.  
         self.mainPwrStr = 'on'  # Main power set string 'on'/'off'
         # try to connect to the arduino by serial port.
@@ -79,11 +80,13 @@ class pwrGenClient(object):
         # self.server = udpCom.udpServer(None, UDP_PORT)
         self.servThread = CommThread(self, 0, "server thread")
 
+        # Init the state manager.
+        self.stateMgr = stateManager()
+        
         # init the plat form state:
         if self.serialComm and not TEST_MODE:
             self.setGenState("50.00:11.00:green:green:green:green:slow:off")
-        # Init the state manager.
-        self.stateMgr = stateManager()
+            
         print('Init finished [Test mode:%s], connection state :\n' %str(TEST_MODE))
         print('Arduino connection : %s' %str(self.serialComm.connected))
         print('PLC 1 [%s] connection: %s' %(PLC1_IP, self.plc1.connected))
@@ -218,8 +221,11 @@ class pwrGenClient(object):
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
         elif msgDict['Cmd'] == 'GetSub':
             # get the Substation memory value;
-            respStr = self.stateMgr.getSubInfo()
-
+            if self.subTHActFlag:
+                respStr = self.stateMgr.getSubInfoTh()
+                self.subTHActFlag = False
+            else:
+                respStr = self.stateMgr.getSubInfo()
         # Send back the response string.
         return respStr
 
@@ -273,13 +279,19 @@ class pwrGenClient(object):
         Returns:
             [type]: [description]
         """
+        loadCount = self.stateMgr.getLoadNum(keyList=('Airp', 'Stat', 'TrkA'))
         if (not self.autoCtrl) or (self.loadNum == loadCount):
             return # no change.
         self.loadNum  = loadCount
-        freqList= ['52.00', '51.20', '50.80', '50.40', '50.00', '50.00', '50.00', '49.8']
-        sirenSt = 'on' if self.loadNum < 2 else 'off'
-        color = 'red' if self.loadNum < 4 else 'green'
-        if self.loadNum == 7: color = 'amber'
+        #freqList= ['52.00', '51.20', '50.80', '50.40', '50.00', '50.00', '50.00', '49.8']
+        #sirenSt = 'on' if self.loadNum < 2 else 'off'
+        #color = 'red' if self.loadNum < 4 else 'green'
+        #if self.loadNum == 7: color = 'amber'
+        #msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color,color,color, 'fast', sirenSt))
+        
+        freqList= ['51.2', '50.8', '50.0', '49.8']
+        sirenSt = 'off'
+        color = 'red' if self.loadNum == 0 else 'green'
         msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color,color,color, 'fast', sirenSt))
         self.setGenState(msgStr)
         
@@ -396,6 +408,7 @@ class pwrGenClient(object):
             self.autoCtrl = True
             return None
         elif threadName == 'A;3':
+            self.subTHActFlag = True
             print(">>> Start the Substation attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
             time.sleep(1)
@@ -416,9 +429,17 @@ class pwrGenClient(object):
                     self.plc3.writeMem('M10', 0)
                     time.sleep(0.5)
                     self.plc3.writeMem('M10', 1)
+                if i == 5:
+                    self.setGenState("50.80:11.00:red:red:red:red:off:off")
+                if i == 10:
+                    self.setGenState("50.00:11.00:amber:amber:amber:amber:off:on")
+
             time.sleep(0.3)
+            self.setGenState("51.20:11.00:red:red:red:red:off:off")
             self.plc3.writeMem('M10', 0)
-            self.setGenState("52.00:11.00:red:red:red:red:off:off")
+            self.plc2.writeMem('qx0.2', True)
+            self.plc3.writeMem('M60', 1)
+
             # self.autoCtrl = True
         self.atkLocker = False
         return None
@@ -541,14 +562,31 @@ class stateManager(object):
         return json.dumps(self.subMemDict)
 
 #--------------------------------------------------------------------------
+    def getSubInfoTh(self):
+        """ Used for trigger the substation attack display show up.
+        Returns:
+            [type]: [description]
+        """
+        for i in range(10):
+            self.subMemDict["ff{:02d}".format(i)] = '0'
+            #print(self.subMemDict["ff{:02d}".format(i)])
+        return json.dumps(self.subMemDict)
+
+#--------------------------------------------------------------------------
     def getLoadInfo(self):
         """ Return the power load state json string."""
         return json.dumps(self.loadDict)
 
 #--------------------------------------------------------------------------
-    def getLoadNum(self):
+    def getLoadNum(self, keyList=None):
         """ Return the number of loads """
-        return sum(self.loadDict.values())
+        if keyList is None:
+            return sum(self.loadDict.values())
+        else:
+            count = 0
+            for key in keyList:
+                count+=self.loadDict[key]
+            return count
 
 #--------------------------------------------------------------------------
     def updateGenSerState(self, changeDict):

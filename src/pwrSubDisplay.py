@@ -31,9 +31,11 @@ class SubDisplayFrame(wx.Frame):
         # flag to identify whether can date the display panel.
         self.updateFlag = True
         self.parmDialog = None  # pop up dialog for change/select paramters.
+        self.attackOn = False
+
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
-        self.SetTransparent(gv.gTranspPct*255//100)
+        #self.SetTransparent(gv.gTranspPct*255//100)
         self.statusbar = self.CreateStatusBar()
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
@@ -115,14 +117,19 @@ class SubDisplayFrame(wx.Frame):
             memStr ([type]): [description]
         """
         memDict = json.loads(memStr)
-        self.statusbar.SetStatusText("M:%s" %str(memDict))
+        
+        if memDict['ff00'] == '0': 
+            self.attackOn = True
+        
+        thTag = '[threshold = 0.1]  ' if not self.attackOn else '[threshold = 2.3]  '
+        self.statusbar.SetStatusText("%s M:%s" %(thTag, str(memDict)))
         # Check whether the display switch state is same as the data.
         #if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
         #    self.swBt.SetValue(bool(memDict['ff02']))
         #    gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
         self.vkBt.SetLabel("Vk:%.7s" %memDict['ff08'])
         self.InjBt.SetLabel("Pk:%.7s\nQk:%.7s" %(memDict['ff04'], memDict['ff05']))
-        self.tkmBt.SetLabel("Tkm: - ")
+        self.tkmBt.SetLabel("Tkm: 1.025 ")
         if gv.iPerSImgPnl.swOn:
             self.vmBt.SetLabel("Vm:%.7s" %memDict['ff09'])
             self.FmjBt.SetLabel("Pkm:%.5s Pmk:%.6s\nQkm:%.5s Qmk:%.6s" %(memDict['ff00'], memDict['ff03'], memDict['ff01'], memDict['ff04']))
