@@ -201,7 +201,8 @@ class pwrGenClient(object):
             # PLC  set request.
             # Main power
             if 'Mpwr' in msgDict['Parm'].keys():
-                self.setMainPwr(msgDict['Parm']['Mpwr'])
+                pass
+                #self.setMainPwr(msgDict['Parm']['Mpwr'])
             # TrackA and B all sensor power
             if 'Spwr' in msgDict['Parm'].keys():
                 self.setSensorPwr(msgDict['Parm']['Spwr'])
@@ -210,7 +211,7 @@ class pwrGenClient(object):
                 self.setPumpSpeed(msgDict['Parm']['Pspd'])
             # Moto speed.
             if 'Mspd' in msgDict['Parm'].keys():
-                self.setMotoSpeed(msgDict['Parm']['Pspd'])
+                self.setMotoSpeed(msgDict['Parm']['Mspd'])
             # Updaste the state manager
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
             respStr = self.stateMgr.getGenInfo()
