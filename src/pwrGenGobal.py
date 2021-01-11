@@ -19,7 +19,7 @@ APP_NAME = 'Generator Manager [Ver:CORPLAB-2019-T3.1-P1]'
 
 #------<IMAGES PATH>-------------------------------------------------------------
 IMG_FD = 'img'
-ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico")         # App Icon.
+ICO_PATH = os.path.join(dirpath, IMG_FD, "geoIcon.ico")         # App icon.
 MOIMG_PATH = os.path.join(dirpath, IMG_FD, "motor.png")         # moto speed background image
 PUIMG_PATH = os.path.join(dirpath, IMG_FD, "pump.png")          # pump speed background image
 PGIMG_PATH = os.path.join(dirpath, IMG_FD, "pwrbg.png")         # power generator background image
@@ -32,14 +32,15 @@ SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")        # siren on image
 gUdpPort = 5005             # UDP communication port.
 gAlphaValue = 200           # transparent alphaValue.(0-255)
 gDisPnlPos  = (600, 780)    # Display panel popup default position.
-gSubPnlPos  = (1100, 100)    # Substation panel popup default position.
+gSubPnlPos  = (1100, 100)   # Substation panel popup default position.
 gUpdateRate = 0.5           # main frame update rate min base 0.5 sec.
 gTranspPct = 70             # Windows transparent percentage.
+gAutoDet = False            # Attack auto detection flag.
 
 #-------<GLOBAL INSTANCES (start with "i")>-----------------------------------------------------
 # INSTANCES are the object. 
 iCtrlPanel = None           # Control panel
-iDetailPanel = None         # Debug and manually control panel.
+iDetailPanel = None         # Debug and user manual control panel.
 iMainFrame = None           # MainFrame.
 iDisFrame = None            # Display frame.
 iSubFrame = None            # Substation frame.

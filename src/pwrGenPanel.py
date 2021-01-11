@@ -347,7 +347,7 @@ class PanelCtrl(wx.Panel):
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class PanelDebug(wx.Panel):
-    """ Manul system control panel used for debug."""
+    """ Manul system control panel used for debugging."""
     def __init__(self, parent):
         wx.Panel.__init__(self, parent)
         self.SetBackgroundColour(wx.Colour(200, 210, 200))
@@ -360,10 +360,10 @@ class PanelDebug(wx.Panel):
         """ Build the main UI Sizer. """
         elemSize, flagsR = (80, 25), wx.RIGHT
         mSizer = wx.BoxSizer(wx.HORIZONTAL)
-        gs = wx.FlexGridSizer(21, 2, 5, 5)
+        gs = wx.FlexGridSizer(23, 2, 5, 5)
         # Generator setup:
         # row:0
-        gs.Add(wx.StaticText(self, label='Generator Setup:'), flag=flagsR, border=2)
+        gs.Add(wx.StaticText(self, label=' [ Generator Setup ] '), flag=flagsR, border=2)
         gs.AddSpacer(5)
         # row:1
         gs.Add(wx.StaticText(self, label=' Frequency : '), flag=flagsR, border=2)
@@ -446,7 +446,7 @@ class PanelDebug(wx.Panel):
         gs.Add(self.sendBt, flag=flagsR, border=2)
         # Display frame setup.
         # row:14
-        gs.Add(wx.StaticText(self, label='DisplayPnel Setup:'), flag=flagsR, border=2)
+        gs.Add(wx.StaticText(self, label=' [ DisplayPanel Setup ] '), flag=flagsR, border=2)
         gs.AddSpacer(5)
         # row:15
         gs.Add(wx.StaticText(self, label=' GeneratorPnl Pos X : '), flag=flagsR, border=2)
@@ -470,11 +470,20 @@ class PanelDebug(wx.Panel):
         self.disSetBt.Bind(wx.EVT_BUTTON, self.onSetDis)
         gs.Add(self.disSetBt, flag=flagsR, border=2)
         
-        # row 20
+        # Functino Ctrl Setup
+        # row:20
+        gs.Add(wx.StaticText(self, label=' [ Functino Ctrl Setup ] '), flag=flagsR, border=2)
+        gs.AddSpacer(5)
+        # row 21
         gs.Add(wx.StaticText(self, label=' Control Mode : '), flag=flagsR, border=2)
         self.ctrlMode = wx.ComboBox(self, -1, choices=['Manul', 'Auto'], size=elemSize)
         self.ctrlMode.Bind(wx.EVT_COMBOBOX, self.onModeChange)
         gs.Add(self.ctrlMode, flag=flagsR, border=2)
+        # row 22
+        gs.Add(wx.StaticText(self, label=' Atk Detection : '), flag=flagsR, border=2)
+        self.detCtrl = wx.ComboBox(self, -1, choices=['on', 'off'], size=elemSize)
+        self.detCtrl.Bind(wx.EVT_COMBOBOX, self.onDetectChange)
+        gs.Add(self.detCtrl, flag=flagsR, border=2)
 
         mSizer.Add(gs, flag=flagsR, border=2)
         return mSizer
@@ -494,6 +503,7 @@ class PanelDebug(wx.Panel):
         self.plcFieldList['Mspd'].SetSelection(0)
         self.plcFieldList['Spwr'].SetSelection(0)
         self.plcFieldList['Mpwr'].SetSelection(0)
+
 #-----------------------------------------------------------------------------
     def onModeChange(self, event):
         """ Change the generator control mode.
@@ -526,6 +536,18 @@ class PanelDebug(wx.Panel):
         posSX = int(self.subPnlX.GetValue())
         posSY = int(self.subPnlY.GetValue())
         gv.gDisPnlPos = (posSX, posSY) 
+
+#-----------------------------------------------------------------------------
+    def onDetectChange(self, event):
+        """[Set the auto detection on/off]
+        Args:
+            event ([type]): [description]
+        """
+        gv.gAutoDet = True if self.detCtrl.GetSelection() == 0 else False
+        print("Func(onDetectChange): Auto detection %s" %str(gv.gAutoDet))
+        if gv.iSubFrame:
+            gv.iSubFrame.onAlertCatch()
+
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------

@@ -104,6 +104,14 @@ class SubDisplayFrame(wx.Frame):
         self.updateFlag = True # enable display update
 
     #-----------------------------------------------------------------------------
+    def onAlertCatch(self):
+        """ Show the attack detection alert in a pop-up message box. """
+        wx.MessageBox('Stealth Attack Detected. Error', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
+        if gv.iPerSImgPnl:
+            gv.iPerSImgPnl.SetBackgroundColour(wx.Colour('Red'))
+            gv.iPerSImgPnl.Refresh(False)
+
+    #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ update the diaplay panel."""
         if self.updateFlag:
@@ -111,11 +119,13 @@ class SubDisplayFrame(wx.Frame):
     
         # update the parameter indicators.
 
+    #-----------------------------------------------------------------------------
     def parseMemStr(self, memStr):
         """[summary]
         Args:
             memStr ([type]): [description]
         """
+        if memStr is None: return 
         memDict = json.loads(memStr)
         
         if memDict['ff00'] == '0': 
