@@ -14,6 +14,7 @@
 #-----------------------------------------------------------------------------
 
 import wx
+import math
 import json
 import pwrGenGobal as gv
 
@@ -106,11 +107,11 @@ class SubDisplayFrame(wx.Frame):
     #-----------------------------------------------------------------------------
     def onAlertCatch(self):
         """ Show the attack detection alert in a pop-up message box. """
-        wx.MessageBox('Stealth Attack Detected. Error', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
         if gv.iPerSImgPnl:
             gv.iPerSImgPnl.SetBackgroundColour(wx.Colour('Red'))
             gv.iPerSImgPnl.Refresh(False)
-
+        wx.MessageBox('Stealth Attack Detected. Error', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
+        
     #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ update the diaplay panel."""
@@ -150,6 +151,23 @@ class SubDisplayFrame(wx.Frame):
             self.FmjBt.SetLabel("Pkm:%s Pmk:%s\nQkm:%s Qmk:%s" % ('0', '0', '0', '0'))
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
             self.Inj2Bt.SetLabel("Pm:%s\n-Qm:%s" % ('0', '0'))
+
+        if gv.gAutoDet: 
+            result = self.checkAttack(memDict)
+            print("func[parseMemStr]: stealthy attack check result: %s" %str(result))
+
+    def checkAttack(self, memDict):
+        # start auto detection base on the parameters.
+        dfr = self.checkFormula(memDict['ff00'], memDict['ff01'], memDict['ff08'])
+        to = self.checkFormula(memDict['ff02'], memDict['ff03'], memDict['ff09'])
+        dinj1 = self.checkFormula(memDict['ff04'], memDict['ff05'], memDict['ff08'])
+        dinj2 = self.checkFormula(memDict['ff06'], memDict['ff07'], memDict['ff09'])
+        d = sum(abs(dfr-dref1), abs(dto-dref2), abs(dinj1-dref3), abs(dinj2-dref4))
+        return d>=0.15
+
+    def checkFormula(self, n1, n2, d1):
+        return math.sqrt(float(n1)**2+float(n2)**2)/(float(d1)**2)
+
 
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
