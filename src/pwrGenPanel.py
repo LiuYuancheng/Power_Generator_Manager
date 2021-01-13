@@ -545,8 +545,8 @@ class PanelDebug(wx.Panel):
         """
         gv.gAutoDet = True if self.detCtrl.GetSelection() == 0 else False
         print("Func(onDetectChange): Auto detection %s" %str(gv.gAutoDet))
-        if gv.iSubFrame:
-            gv.iSubFrame.onAlertCatch()
+        #if gv.iSubFrame:
+        #    gv.iSubFrame.onAlertCatch()
 
 
 #-----------------------------------------------------------------------------

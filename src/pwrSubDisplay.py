@@ -33,7 +33,7 @@ class SubDisplayFrame(wx.Frame):
         self.updateFlag = True
         self.parmDialog = None  # pop up dialog for change/select paramters.
         self.attackOn = False
-
+        self.messageRst = None
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
         #self.SetTransparent(gv.gTranspPct*255//100)
@@ -108,10 +108,19 @@ class SubDisplayFrame(wx.Frame):
     def onAlertCatch(self):
         """ Show the attack detection alert in a pop-up message box. """
         if gv.iPerSImgPnl:
-            gv.iPerSImgPnl.SetBackgroundColour(wx.Colour('Red'))
-            gv.iPerSImgPnl.Refresh(False)
-        wx.MessageBox('Stealth Attack Detected. Error', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
-        
+            #gv.iPerSImgPnl.SetBackgroundColour(wx.Colour('Red'))
+            gv.iPerSImgPnl.alterTrigger(True)
+            #gv.iPerSImgPnl.Refresh(False)
+        self.messageRst = wx.MessageBox('Stealthy Attack Detected [threshold = 2.31]. Fix the Error ?', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
+        if self.messageRst == 2:
+            print("Press Yes")
+            gv.gAutoDet = self.attackOn = False
+            if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(False)
+        else: 
+            print("Press No")
+        print("Func[onAlertCatch] : Alter handling fixed")
+        self.messageRst = None 
+
     #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ update the diaplay panel."""
@@ -129,9 +138,17 @@ class SubDisplayFrame(wx.Frame):
         if memStr is None: return 
         memDict = json.loads(memStr)
         
-        if memDict['ff00'] == '0': 
+        # Check the detection flag
+        if gv.gAutoDet and memDict['ff00'] == '0': 
             self.attackOn = True
-        
+            if self.messageRst is None:
+                self.onAlertCatch()
+            # Show the alert.
+            #if gv.iPerSImgPnl:gv.iPerSImgPnl.alterTrigger(True)
+        #elif gv.iPerSImgPnl:
+        #    gv.iPerSImgPnl.alterTrigger(False)
+        #    self.messageRst= None
+            
         thTag = '[threshold = 0.1]  ' if not self.attackOn else '[threshold = 2.3]  '
         self.statusbar.SetStatusText("%s M:%s" %(thTag, str(memDict)))
         # Check whether the display switch state is same as the data.
@@ -152,12 +169,17 @@ class SubDisplayFrame(wx.Frame):
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
             self.Inj2Bt.SetLabel("Pm:%s\n-Qm:%s" % ('0', '0'))
 
-        if gv.gAutoDet: 
+        if gv.gAutoDet and False: 
             result = self.checkAttack(memDict)
             print("func[parseMemStr]: stealthy attack check result: %s" %str(result))
 
+    #-----------------------------------------------------------------------------
     def checkAttack(self, memDict):
         # start auto detection base on the parameters.
+        dref1 = 2.6451
+        dref2 = 2.5455
+        dref3 = 0.9508
+        dref4 = 0.4625
         dfr = self.checkFormula(memDict['ff00'], memDict['ff01'], memDict['ff08'])
         to = self.checkFormula(memDict['ff02'], memDict['ff03'], memDict['ff09'])
         dinj1 = self.checkFormula(memDict['ff04'], memDict['ff05'], memDict['ff08'])
@@ -165,9 +187,9 @@ class SubDisplayFrame(wx.Frame):
         d = sum(abs(dfr-dref1), abs(dto-dref2), abs(dinj1-dref3), abs(dinj2-dref4))
         return d>=0.15
 
+    #-----------------------------------------------------------------------------
     def checkFormula(self, n1, n2, d1):
         return math.sqrt(float(n1)**2+float(n2)**2)/(float(d1)**2)
-
 
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
@@ -197,6 +219,7 @@ class PanelSub(wx.Panel):
         self.SetBackgroundColour(wx.Colour('Gray'))
         self.panelSize = panelSize
         self.swOn = True
+        self.alertFlg = False
         self.toggleF = True #display toggle flag.
         self.flowCount = 0  #flow animation count
         # Setup the paint display function.
@@ -213,7 +236,7 @@ class PanelSub(wx.Panel):
         if tag == "Sw":
             self.swOn = val
             self.updateDisplay()
-
+            
 #-----------------------------------------------------------------------------
     def getTransIcon(self, posX, n):
         """ Draw the points of the transformer spring.(Currently not used.)
@@ -244,7 +267,7 @@ class PanelSub(wx.Panel):
         gc = wx.GraphicsContext.Create(dc)
         path = gc.CreatePath()
         
-        print("In paint function.")
+        #print("In paint function.")
 
         lineStyle = wx.PENSTYLE_SOLID
         # Draw the background.
@@ -309,15 +332,28 @@ class PanelSub(wx.Panel):
         self.flowCount += 10
 
 #-----------------------------------------------------------------------------
+    def alterTrigger(self, altFlag):
+        if self.alertFlg == altFlag: return
+        self.alertFlg = altFlag
+        print("> %s" %str(self.alertFlg))
+        if not self.alertFlg:
+            self.SetBackgroundColour(wx.Colour('Gray'))
+            self.updateDisplay()
+
+#-----------------------------------------------------------------------------
     def updateDisplay(self, updateFlag=None):
         """ Set/Update the display: if called as updateDisplay() the function will 
             update the panel, if called as updateDisplay(updateFlag=?) the function
             will set the self update flag.
         """
         #self.toggle = not self.toggle # change the toggle flag every time we updated display
+        print(">>>")
+        if self.alertFlg:
+            color = 'Red' if self.toggleF else 'Gray'
+            self.SetBackgroundColour(wx.Colour(color))
         self.Refresh(True)
         self.Update()
-
+        
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 class stateManager(object):

