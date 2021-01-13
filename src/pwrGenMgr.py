@@ -411,6 +411,7 @@ class pwrGenClient(object):
             return None
         elif threadName == 'A;3':
             self.subTHActFlag = True
+            self.sleep(5) # wait 5 sec then start the attack.
             print(">>> Start the Stealthy attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
             time.sleep(1)

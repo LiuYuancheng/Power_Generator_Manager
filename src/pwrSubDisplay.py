@@ -3,8 +3,8 @@
 # Name:        pwSubDisplay.py
 #
 # Purpose:     This module is used to create a transparent, no window board live 
-#              substation control parameter simulation display frame show overlay 
-#              on top of the CSI OT-Platform HMI program.
+#              substation control parameter simulation display frame which shows 
+#              overlay on top of the CSI OT-Platform main HMI program.
 #
 # Author:      Yuancheng Liu, Shantanu Chakrabarty, Zhang Guihai
 #
@@ -28,16 +28,18 @@ class SubDisplayFrame(wx.Frame):
     def __init__(self, parent, width, height, position=DEF_POS):
         wx.Frame.__init__(self, parent, title="SubstationLiveDisplay",
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
-        self.SetBackgroundColour(wx.Colour('BLACK'))
-        # flag to identify whether can date the display panel.
-        self.updateFlag = True
+        self.SetBackgroundColour(wx.Colour('Gray'))
+        # def flags to identify program action. 
+        self.updateFlag = True  # display panel update flag.
         self.parmDialog = None  # pop up dialog for change/select paramters.
         self.attackOn = False
         self.messageRst = None
+
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
         #self.SetTransparent(gv.gTranspPct*255//100)
-        self.statusbar = self.CreateStatusBar()
+        #self.statusbar = self.CreateStatusBar()
+        self.thresholdLb2.Hide()
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Show()
@@ -71,20 +73,56 @@ class SubDisplayFrame(wx.Frame):
         sizer.Add(gv.iPerSImgPnl, flag=wx.CENTER, border=2)
 
         # build the bottum panel.
-        self.downPnl = wx.Panel(self, size=(400, 80))
+        self.downPnl = wx.Panel(self, size=(400, 50))
         self.downPnl.SetBackgroundColour(wx.Colour('Gray'))
-        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pk:0\nQk:0',style=wx.BU_LEFT, size=(100,40), pos=(5, 2))
+        self.InjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pk: 0\nQk: 0',style=wx.BU_LEFT, size=(100,40), pos=(5, 2))
         self.InjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.InjBt.SetToolTip('Injection measurement : \nInj_I = Ing-P[k],Q[k]')
 
-        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pkm:0 Qkm:0\nPmk:0 Qmk:0', style=wx.BU_LEFT,size=(160,40), pos=(120, 2))
+        self.FmjBt = wx.Button(self.downPnl, wx.ID_ANY, 'Pkm: 0 Qkm: 0\nPmk: 0 Qmk: 0', style=wx.BU_LEFT,size=(165,40), pos=(120, 2))
         self.FmjBt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.FmjBt.SetToolTip('Flow measurements: \n P[km], P[mk]\n,Q[km], Q[mk]')
 
-        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Pm: 0\nQm:0', style=wx.BU_LEFT, size=(90,40),  pos=(300, 2))
+        self.Inj2Bt = wx.Button(self.downPnl, wx.ID_ANY, 'Pm: 0\nQm: 0', style=wx.BU_LEFT, size=(90,40),  pos=(300, 2))
         self.Inj2Bt.Bind(wx.EVT_BUTTON, self.onParmChange)
         self.Inj2Bt.SetToolTip('Injection measurement : \nInj_O = Ing-P[m],Q[m]')
         sizer.Add(self.downPnl, flag=wx.CENTER, border=2)
+
+        # build the detection ctrl panel
+
+        hSizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        #self.thresholdLb = wx.StaticText(self, label='[threshold = 0.0000 ] ')
+        #self.thresholdLb.SetForegroundColour((255,0,0))
+        #vSizer.Add(self.thresholdLb, flag=wx.CENTER, border=2)
+
+        vSizer = wx.BoxSizer(wx.VERTICAL)
+        self.detECB = wx.CheckBox(self, label = ' Detection Enable')
+        self.detECB.Bind(wx.EVT_CHECKBOX, self.showTHLb)
+        vSizer.Add(self.detECB, flag=wx.LEFT, border=2)
+
+        vSizer.AddSpacer(5)
+        self.matuBt = wx.Button(self, wx.ID_ANY, ' Manul Mode On ', style=wx.BU_LEFT, size=(130,20) )
+        vSizer.Add(self.matuBt, flag=wx.LEFT, border=2)
+
+        hSizer.Add(vSizer, flag=wx.LEFT, border=2)
+
+        self.thresholdLb2 = wx.StaticText(self, label='[ threshold = 0.0000 ] ')
+        self.thresholdLb2.SetForegroundColour((0,255,0))
+        self.thresholdLb2.SetForegroundColour((0,0,0))
+        font = wx.Font(14, wx.DEFAULT, wx.DEFAULT, wx.NORMAL)
+        self.thresholdLb2.SetFont(font)
+        
+        hSizer.Add(self.thresholdLb2, flag=wx.CENTER, border=2)
+        
+        #self.thresholdLb2.Hide()
+
+        sizer.Add(hSizer, flag=wx.CENTER, border=2)
+
+
+        #self.thresholdLb2.Hide()
+
+        # TODO: https://www.blog.pythonlibrary.org/2010/06/16/wxpython-how-to-switch-between-panels/
 
         return sizer
 
@@ -111,15 +149,23 @@ class SubDisplayFrame(wx.Frame):
             #gv.iPerSImgPnl.SetBackgroundColour(wx.Colour('Red'))
             gv.iPerSImgPnl.alterTrigger(True)
             #gv.iPerSImgPnl.Refresh(False)
-        self.messageRst = wx.MessageBox('Stealthy Attack Detected [threshold = 2.31]. Fix the Error ?', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
-        if self.messageRst == 2:
-            print("Press Yes")
-            gv.gAutoDet = self.attackOn = False
-            if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(False)
-        else: 
-            print("Press No")
+        #self.messageRst = wx.MessageBox('Stealthy Attack Detected [threshold = 2.31]. Fix the Error ?', 'Alert !', wx.YES_NO | wx.ICON_ERROR)
+        #if self.messageRst == 2:
+        #    print("Press Yes")
+        #    gv.gAutoDet = self.attackOn = False
+        #    if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(False)
+        #else: 
+        #    print("Press No")
+        self.thresholdLb2.SetForegroundColour((255,0,0))
         print("Func[onAlertCatch] : Alter handling fixed")
         self.messageRst = None 
+
+    def showTHLb(self, event):
+        if self.detECB.IsChecked():
+            self.thresholdLb2.Show()
+        else:
+            self.thresholdLb2.Hide()
+        #self.Layout()
 
     #-----------------------------------------------------------------------------
     def updateDisplay(self):
@@ -143,6 +189,7 @@ class SubDisplayFrame(wx.Frame):
             self.attackOn = True
             if self.messageRst is None:
                 self.onAlertCatch()
+                self.thresholdLb2.SetForegroundColour((0,0,0))
             # Show the alert.
             #if gv.iPerSImgPnl:gv.iPerSImgPnl.alterTrigger(True)
         #elif gv.iPerSImgPnl:
@@ -150,24 +197,28 @@ class SubDisplayFrame(wx.Frame):
         #    self.messageRst= None
             
         thTag = '[threshold = 0.1]  ' if not self.attackOn else '[threshold = 2.3]  '
-        self.statusbar.SetStatusText("%s M:%s" %(thTag, str(memDict)))
+        #self.statusbar.SetStatusText("%s M:%s" %(thTag, str(memDict)))
+        
         # Check whether the display switch state is same as the data.
         #if(bool(memDict['ff02']) != gv.iPerSImgPnl.swOn):
         #    self.swBt.SetValue(bool(memDict['ff02']))
         #    gv.iPerSImgPnl.setElement('Sw', bool(memDict['ff02']))
-        self.vkBt.SetLabel("Vk:%.7s" %memDict['ff08'])
-        self.InjBt.SetLabel("Pk:%.7s\nQk:%.7s" %(memDict['ff04'], memDict['ff05']))
+        self.vkBt.SetLabel("Vk: %.7s" %memDict['ff08'])
+        self.InjBt.SetLabel("Pk: %.7s\nQk: %.7s" %(memDict['ff04'], memDict['ff05']))
         self.tkmBt.SetLabel("Tkm: 1.025 ")
         if gv.iPerSImgPnl.swOn:
-            self.vmBt.SetLabel("Vm:%.7s" %memDict['ff09'])
-            self.FmjBt.SetLabel("Pkm:%.5s Pmk:%.6s\nQkm:%.5s Qmk:%.6s" %(memDict['ff00'], memDict['ff03'], memDict['ff01'], memDict['ff04']))
+            self.vmBt.SetLabel("Vm: %.7s" %memDict['ff09'])
+            self.FmjBt.SetLabel("Pkm: %.5s Pmk: %.6s\nQkm: %.5s Qmk: %.6s" %(memDict['ff00'], memDict['ff03'], memDict['ff01'], memDict['ff04']))
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" %(memDict['ff04'], memDict['ff05']))
-            self.Inj2Bt.SetLabel("Pm:%.7s\nQm:%.7s" %(memDict['ff06'], memDict['ff07']))
+            self.Inj2Bt.SetLabel("Pm: %.7s\nQm: %.7s" %(memDict['ff06'], memDict['ff07']))
         else: 
-            self.vmBt.SetLabel("Vm:%s" % '0')
-            self.FmjBt.SetLabel("Pkm:%s Pmk:%s\nQkm:%s Qmk:%s" % ('0', '0', '0', '0'))
+            self.vmBt.SetLabel("Vm: %s" % '0')
+            self.FmjBt.SetLabel("Pkm: %s Pmk: %s\nQkm: %s Qmk: %s" % ('0', '0', '0', '0'))
             #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
-            self.Inj2Bt.SetLabel("Pm:%s\n-Qm:%s" % ('0', '0'))
+            self.Inj2Bt.SetLabel("Pm: %s\n-Qm: %s" % ('0', '0'))
+
+        result = self.checkAttack(memDict)
+        self.thresholdLb2.SetLabel("[ threshold = %.8s]" %str(result))
 
         if gv.gAutoDet and False: 
             result = self.checkAttack(memDict)
@@ -181,11 +232,12 @@ class SubDisplayFrame(wx.Frame):
         dref3 = 0.9508
         dref4 = 0.4625
         dfr = self.checkFormula(memDict['ff00'], memDict['ff01'], memDict['ff08'])
-        to = self.checkFormula(memDict['ff02'], memDict['ff03'], memDict['ff09'])
+        dto = self.checkFormula(memDict['ff02'], memDict['ff03'], memDict['ff09'])
         dinj1 = self.checkFormula(memDict['ff04'], memDict['ff05'], memDict['ff08'])
         dinj2 = self.checkFormula(memDict['ff06'], memDict['ff07'], memDict['ff09'])
-        d = sum(abs(dfr-dref1), abs(dto-dref2), abs(dinj1-dref3), abs(dinj2-dref4))
-        return d>=0.15
+        d = sum((abs(dfr-dref1), abs(dto-dref2), abs(dinj1-dref3), abs(dinj2-dref4)))
+        return d
+        #return d>=0.15
 
     #-----------------------------------------------------------------------------
     def checkFormula(self, n1, n2, d1):
@@ -410,7 +462,7 @@ class stateManager(object):
 def main():
     """ Main function used for local test. """
     app = wx.App()
-    mainFrame = SubDisplayFrame(None, 410, 230)
+    mainFrame = SubDisplayFrame(None, 410, 300)
     app.MainLoop()
 
 if __name__ == "__main__":
