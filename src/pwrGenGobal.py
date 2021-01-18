@@ -36,6 +36,7 @@ gSubPnlPos  = (1100, 100)   # Substation panel popup default position.
 gUpdateRate = 0.5           # main frame update rate min base 0.5 sec.
 gTranspPct = 70             # Windows transparent percentage.
 gAutoDet = False            # Attack auto detection flag.
+gThreshold = 1.5            # The threshold value to specify whether the substation was under attack.
 
 #-------<GLOBAL INSTANCES (start with "i")>-----------------------------------------------------
 # INSTANCES are the object. 
