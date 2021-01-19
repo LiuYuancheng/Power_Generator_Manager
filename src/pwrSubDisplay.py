@@ -33,6 +33,7 @@ class SubDisplayFrame(wx.Frame):
         self.updateFlag = True  # display panel update flag.
         self.parmDialog = None  # pop up dialog for change/select paramters.
         self.attackOn = False
+        #self.attackOn = True
         # Build the main UI.
         self.SetSizerAndFit(self.buidUISizer())
         #self.SetTransparent(gv.gTranspPct*255//100)

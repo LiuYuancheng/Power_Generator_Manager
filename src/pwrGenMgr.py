@@ -67,7 +67,7 @@ class pwrGenClient(object):
         self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
         self.atkLocker = False  # lock the new incoming attack request if doing attack simulation.
-        self.subTHActFlag  = False # Threshold active flag.
+        self.subTHActFlag  = 0 # Threshold active flag 0 normal case, 1 under attackc, 2 attack stopped.
         self.mainPwrSet = False # Wheter we need to set/update main power in the next around of loop.  
         self.mainPwrStr = 'on'  # Main power set string 'on'/'off'
         # try to connect to the arduino by serial port.
@@ -222,11 +222,12 @@ class pwrGenClient(object):
             self.autoCtrl = msgDict['Parm']
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
         elif msgDict['Cmd'] == 'GetSub':
-            # get the Substation memory value;
-            if self.subTHActFlag:
-                respStr = self.stateMgr.getSubInfoTh()
-                self.subTHActFlag = False
-            else:
+            # get the Substation memory value;\
+            if self.subTHActFlag !=0:
+                # the reason we add this is the subTHActFlag is changed in the 
+                respStr = self.stateMgr.getSubInfo(self.subTHActFlag)
+                self.subTHActFlag = 0
+            else: 
                 respStr = self.stateMgr.getSubInfo()
         # Send back the response string.
         return respStr
@@ -410,8 +411,8 @@ class pwrGenClient(object):
             self.autoCtrl = True
             return None
         elif threadName == 'A;3':
-            self.subTHActFlag = True
-            self.sleep(5) # wait 5 sec then start the attack.
+            self.subTHActFlag = 1
+            time.sleep(5) # wait 5 sec then start the attack.
             print(">>> Start the Stealthy attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
             time.sleep(1)
@@ -486,7 +487,7 @@ class stateManager(object):
         self.subParms = {'Nml':[[] for a in range(4)], 
                         'Atk':[[] for a in range(4)]}        
         self.loadCSVParm(os.path.join(os.path.dirname(__file__), CSV_VAL))
-        
+        self.AtkFlag = False # the flag to identify what kind of data we want to fetch.
         # Generator state dictionary.
         self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
                             'Volt': '11.00',    # voltage (dd.dd)
@@ -566,13 +567,22 @@ class stateManager(object):
         return json.dumps(self.genDict)
 
 #--------------------------------------------------------------------------
-    def getSubInfo(self):
-        """ Return the generator state json string."""
+    def getSubInfo(self, thFlag=None):
+        """ Return the generator state json string.
+            stflag = 0/None : normal case, return the 
+        """
         loadNum = 3 if TEST_MODE else sum((self.loadDict['Airp'], self.loadDict['Stat'], self.loadDict['TrkA']))
         valIdx = randint(0,18)
+        statStr = 'Atk' if self.AtkFlag else 'Nml'
         for i in range(10):
-            self.subMemDict["ff{:02d}".format(i)] = self.subParms['Nml'][loadNum][valIdx][i]
+            self.subMemDict["ff{:02d}".format(i)] = self.subParms[statStr][loadNum][valIdx][i]
             #print(self.subMemDict["ff{:02d}".format(i)])
+        if thFlag == 1: 
+            self.AtkFlag = True
+            self.subMemDict["ff00"] = '0'
+        if thFlag == 2:
+            self.AtkFlag = False
+            self.subMemDict["ff00"] = '1'
         return json.dumps(self.subMemDict)
 
 #--------------------------------------------------------------------------
