@@ -188,7 +188,7 @@ class SubDisplayFrame(wx.Frame):
             if self.attackOn: thVal += gv.gThreshold
             if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(self.attackOn)
                 
-            self.thresholdLb.SetLabel("[TH = %.8s]" %str(thVal))
+            self.thresholdLb.SetLabel(" [TH = %.8s]" %str(thVal))
 
     #-----------------------------------------------------------------------------
     def gethreshold(self, memDict):
@@ -215,7 +215,7 @@ class SubDisplayFrame(wx.Frame):
         except Exception as err:
             print(
                 'Error in func[CheckAttack]: parameter missing: %s' % str(err))
-            return 2.31  # return a fixed threshold value which will also trigger the attack
+            return 0.231  # return a fixed threshold value which will also trigger the attack
 
     #-----------------------------------------------------------------------------
     def checkFormula(self, n1, n2, d1):
@@ -245,7 +245,6 @@ class SubDisplayFrame(wx.Frame):
             plcDict = {'Spwr':val}
             gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
             
-
     #-----------------------------------------------------------------------------
     def updateDisplay(self):
         """ update the diaplay panel."""

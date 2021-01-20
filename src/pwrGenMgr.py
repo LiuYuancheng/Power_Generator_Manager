@@ -70,8 +70,10 @@ class pwrGenClient(object):
         self.subTHActFlag  = 0 # Threshold active flag 0 normal case, 1 under attackc, 2 attack stopped.
         self.mainPwrSet = False # Wheter we need to set/update main power in the next around of loop.  
         self.mainPwrStr = 'on'  # Main power set string 'on'/'off'
+
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
+        time.sleep(30) # wait 30 second to make sure all the PLCs are online already
         # try to connect to the PLCs.
         self.plc1 = m221.M221(PLC1_IP)
         self.plc2 = s71200.S7PLC1200(PLC2_IP)
@@ -411,10 +413,10 @@ class pwrGenClient(object):
             self.autoCtrl = True
             return None
         elif threadName == 'A;3':
-            self.subTHActFlag = 1
             time.sleep(5) # wait 5 sec then start the attack.
             print(">>> Start the Stealthy attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
+            self.subTHActFlag = 1 # put the attack appearence after the module have action.
             time.sleep(1)
             if self.plc1.connected: self.plc1.writeMem('M60', 1)               
             time.sleep(1)
