@@ -28,7 +28,8 @@ class SubDisplayFrame(wx.Frame):
     def __init__(self, parent, width, height, position=DEF_POS):
         wx.Frame.__init__(self, parent, title="SubstationLiveDisplay",
                           style=wx.MINIMIZE_BOX | wx.STAY_ON_TOP)
-        self.SetBackgroundColour(wx.Colour('Gray'))
+        #self.SetBackgroundColour(wx.Colour('Gray'))
+        self.SetBackgroundColour(wx.Colour('White'))
         # def flags to identify program action. 
         self.updateFlag = True  # display panel update flag.
         self.parmDialog = None  # pop up dialog for change/select paramters.
@@ -89,15 +90,16 @@ class SubDisplayFrame(wx.Frame):
 
         # build the detection ctrl panel
         hSizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.detECB = wx.CheckBox(self, label = ' Detection Enable')
+        self.detECB = wx.CheckBox(self, label = ' Detection On')
         self.detECB.Bind(wx.EVT_CHECKBOX, self.setAutoDetect)
         hSizer.Add(self.detECB, flag=wx.CENTER, border=2)
         hSizer.AddSpacer(5)
         self.matuBt = wx.Button(self, wx.ID_ANY, ' Manul Mode ', style=wx.BU_LEFT, size=(100,20) )
+        self.matuBt.Bind(wx.EVT_CHECKBOX, self.turnManuMD)
         hSizer.Add(self.matuBt, flag=wx.CENTER, border=2)
         self.matuBt.Hide()
         hSizer.AddSpacer(5)
-        self.thresholdLb = wx.StaticText(self, label='[threshold = 0.0000]')
+        self.thresholdLb = wx.StaticText(self, label=' [TH = 0.0000]')
         self.thresholdLb.SetForegroundColour((0,255,0))
         self.thresholdLb.SetForegroundColour((0,0,0))
         font = wx.Font(12, wx.DEFAULT, wx.DEFAULT, wx.NORMAL)
@@ -183,10 +185,10 @@ class SubDisplayFrame(wx.Frame):
                 self.thresholdLb.SetForegroundColour((0,0,0))
             thVal = self.gethreshold(memDict)
             # Temporary as the attack simulation data is not ready.
-            if self.attackOn:
-                thVal += gv.gThreshold
-                if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(True)
-            self.thresholdLb.SetLabel("[threshold = %.8s]" %str(thVal))
+            if self.attackOn: thVal += gv.gThreshold
+            if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(self.attackOn)
+                
+            self.thresholdLb.SetLabel("[TH = %.8s]" %str(thVal))
 
     #-----------------------------------------------------------------------------
     def gethreshold(self, memDict):
@@ -232,6 +234,17 @@ class SubDisplayFrame(wx.Frame):
             val = 'on' if self.swBt.IsChecked() else 'off'
             plcDict = {'Mpwr':val}
             gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
+            
+    #-----------------------------------------------------------------------------
+    def turnManuMD(self, event):
+        """ Turn on the manu mode ctrl
+        """
+        print("Turn on manu mode.")
+        if gv.iMainFrame:
+            val = 'on'
+            plcDict = {'Spwr':val}
+            gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
+            
 
     #-----------------------------------------------------------------------------
     def updateDisplay(self):

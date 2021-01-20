@@ -476,6 +476,7 @@ class pwrGenClient(object):
         if self.plc3.connected:
             self.plc3.writeMem('M10', 1)
         self.atkLocker = False
+        self.subTHActFlag = 2
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -574,6 +575,7 @@ class stateManager(object):
         loadNum = 3 if TEST_MODE else sum((self.loadDict['Airp'], self.loadDict['Stat'], self.loadDict['TrkA']))
         valIdx = randint(0,18)
         statStr = 'Atk' if self.AtkFlag else 'Nml'
+        statStr = 'Nml'
         for i in range(10):
             self.subMemDict["ff{:02d}".format(i)] = self.subParms[statStr][loadNum][valIdx][i]
             #print(self.subMemDict["ff{:02d}".format(i)])
