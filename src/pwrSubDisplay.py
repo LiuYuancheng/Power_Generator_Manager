@@ -39,7 +39,6 @@ class SubDisplayFrame(wx.Frame):
         self.SetSizerAndFit(self.buidUISizer())
         #self.SetTransparent(gv.gTranspPct*255//100)
         #self.statusbar = self.CreateStatusBar()
-
         self.SetPosition(position)
         self.Bind(wx.EVT_CLOSE, self.onCloseWindow)
         self.Show()
@@ -111,20 +110,26 @@ class SubDisplayFrame(wx.Frame):
         return sizer
 
     #-----------------------------------------------------------------------------
-    def setAutoDetect(self, event):
-        """ Set auto detection flag, show the menu mode button and threshold label. 
+    def getThreshold(self, memDict):
+        """ Get the threshold value based on the parameters dict input.
         Args:
-            event ([type]): [description]
+            memDict ([dict]): [substation's parameter dict]
         """
-        if self.detECB.IsChecked():
-            gv.gAutoDet = True
-            self.matuBt.Show()
-            self.thresholdLb.Show()
-        else:
-            gv.gAutoDet = False
-            self.matuBt.Hide()
-            self.thresholdLb.Hide()
-        self.Layout() # need to call the layout https://www.blog.pythonlibrary.org/2010/06/16/wxpython-how-to-switch-between-panels/
+        def checkFormula(n1, n2, d1):
+            return math.sqrt(float(n1)**2+float(n2)**2)/(float(d1)**2)
+        try:
+            dref1 = 2.6451
+            dref2 = 2.5455
+            dref3 = 0.9508
+            dref4 = 0.4625
+            dfr = checkFormula(memDict['ff00'], memDict['ff01'], memDict['ff08'])
+            dto = checkFormula(memDict['ff02'], memDict['ff03'], memDict['ff09'])
+            dinj1 = checkFormula(memDict['ff04'], memDict['ff05'], memDict['ff08'])
+            dinj2 = checkFormula(memDict['ff06'], memDict['ff07'], memDict['ff09'])
+            return sum((abs(dfr-dref1), abs(dto-dref2),abs(dinj1-dref3), abs(dinj2-dref4)))
+        except Exception as err:
+            print('Error in func[CheckAttack]: parameter missing: %s' % str(err))
+            return 0.231  # return a fixed threshold value which will also trigger the attack
 
     #-----------------------------------------------------------------------------
     def onCloseWindow(self, evt):
@@ -150,9 +155,9 @@ class SubDisplayFrame(wx.Frame):
 
     #-----------------------------------------------------------------------------
     def parseMemStr(self, memStr):
-        """[summary]
+        """ Parse the incoming substation parameter string.
         Args:
-            memStr ([type]): [description]
+            memStr ([str]): [substation parameters Json string]
         """
         if memStr is None: return 
         memDict = json.loads(memStr)
@@ -167,61 +172,42 @@ class SubDisplayFrame(wx.Frame):
         if gv.iPerSImgPnl.swOn:
             self.vmBt.SetLabel("Vm: %.7s" %memDict['ff09'])
             self.FmjBt.SetLabel("Pkm: %.5s Pmk: %.6s\nQkm: %.5s Qmk: %.6s" %(memDict['ff00'], memDict['ff03'], memDict['ff01'], memDict['ff04']))
-            #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" %(memDict['ff04'], memDict['ff05']))
             self.Inj2Bt.SetLabel("Pm: %.7s\nQm: %.7s" %(memDict['ff06'], memDict['ff07']))
         else: 
             self.vmBt.SetLabel("Vm: %s" % '0')
             self.FmjBt.SetLabel("Pkm: %s Pmk: %s\nQkm: %s Qmk: %s" % ('0', '0', '0', '0'))
-            #self.InjBt.SetLabel("Inj_I \n -P[k]:%s\n-Q[k]:%s" % ('0', '0'))
             self.Inj2Bt.SetLabel("Pm: %s\n-Qm: %s" % ('0', '0'))
 
-        # Check the detection flag
+        # Calculate the threshold value if the auto-detection function is turned on. 
         if gv.gAutoDet:
             if memDict['ff00'] == '0':
                 self.attackOn = True
-                self.thresholdLb.SetForegroundColour((255,0,0))
+                self.thresholdLb.SetForegroundColour((255, 0, 0))
             if memDict['ff00'] == '1':
                 self.attackOn = False
-                self.thresholdLb.SetForegroundColour((0,0,0))
-            thVal = self.gethreshold(memDict)
-            # Temporary as the attack simulation data is not ready.
+                self.thresholdLb.SetForegroundColour((0, 0, 0))
+            thVal = self.getThreshold(memDict)
+
+            # Temporary active the attack here as the attack simulation data is not ready.
             if self.attackOn: thVal += gv.gThreshold
             if gv.iPerSImgPnl: gv.iPerSImgPnl.alterTrigger(self.attackOn)
-                
-            self.thresholdLb.SetLabel(" [TH = %.8s]" %str(thVal))
+            self.thresholdLb.SetLabel(" [TH = %.8s]" % str(thVal))
 
     #-----------------------------------------------------------------------------
-    def gethreshold(self, memDict):
-        # start auto detection base on the parameters.
-
-        def checkFormula(n1, n2, d1):
-            return math.sqrt(float(n1)**2+float(n2)**2)/(float(d1)**2)
-        try:
-            dref1 = 2.6451
-            dref2 = 2.5455
-            dref3 = 0.9508
-            dref4 = 0.4625
-            dfr = checkFormula(
-                memDict['ff00'], memDict['ff01'], memDict['ff08'])
-            dto = checkFormula(
-                memDict['ff02'], memDict['ff03'], memDict['ff09'])
-            dinj1 = checkFormula(
-                memDict['ff04'], memDict['ff05'], memDict['ff08'])
-            dinj2 = checkFormula(
-                memDict['ff06'], memDict['ff07'], memDict['ff09'])
-            d = sum((abs(dfr-dref1), abs(dto-dref2),
-                     abs(dinj1-dref3), abs(dinj2-dref4)))
-            return d
-        except Exception as err:
-            print(
-                'Error in func[CheckAttack]: parameter missing: %s' % str(err))
-            return 0.231  # return a fixed threshold value which will also trigger the attack
-
-    #-----------------------------------------------------------------------------
-    def checkFormula(self, n1, n2, d1):
-        """ data check formula
+    def setAutoDetect(self, event):
+        """ Set auto detection flag, show the manual mode button and threshold label. 
+        Args:
+            event ([wx.EVT_CHECKBOX]): [check box click event]
         """
-        return math.sqrt(float(n1)**2+float(n2)**2)/(float(d1)**2)
+        if self.detECB.IsChecked():
+            gv.gAutoDet = True
+            self.matuBt.Show()
+            self.thresholdLb.Show()
+        else:
+            gv.gAutoDet = False
+            self.matuBt.Hide()
+            self.thresholdLb.Hide()
+        self.Layout() # need to call the layout https://www.blog.pythonlibrary.org/2010/06/16/wxpython-how-to-switch-between-panels/
 
     #-----------------------------------------------------------------------------
     def turnSw(self, event):
@@ -229,27 +215,26 @@ class SubDisplayFrame(wx.Frame):
         Args:
             event ([wx.EVT_CHECKBOX]): [description]
         """
-        gv.iPerSImgPnl.setElement('Sw',self.swBt.IsChecked())
+        gv.iPerSImgPnl.setElement('Sw', self.swBt.IsChecked())
         if gv.iMainFrame:
             val = 'on' if self.swBt.IsChecked() else 'off'
-            plcDict = {'Mpwr':val}
+            plcDict = {'Mpwr': val}
             gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
             
     #-----------------------------------------------------------------------------
     def turnManuMD(self, event):
-        """ Turn on the manu mode ctrl
+        """ Turn on the menu mode of the substation control.
+        Args:
+            event ([type]): [description]
         """
-        print("Turn on manu mode.")
         if gv.iMainFrame:
-            val = 'on'
-            plcDict = {'Spwr':val}
-            gv.iMainFrame.connectReq('SetPLC', parm=plcDict)
+            print("Func[turnManuMD]: Turn on manu mode.")
+            gv.iMainFrame.connectReq('SetPLC', parm={'Spwr': 'on'})
             
     #-----------------------------------------------------------------------------
     def updateDisplay(self):
-        """ update the diaplay panel."""
-        if self.updateFlag:
-            gv.iPerSImgPnl.updateDisplay()
+        """ Update the substation diagram diaplay panel."""
+        if self.updateFlag: gv.iPerSImgPnl.updateDisplay()
         # update the parameter indicators.
 
 #-----------------------------------------------------------------------------
@@ -261,7 +246,7 @@ class PanelSub(wx.Panel):
         #self.SetBackgroundColour(wx.Colour(200, 200, 200))
         self.SetBackgroundColour(wx.Colour('Gray'))
         self.panelSize = panelSize
-        self.swOn = True
+        self.swOn = True    # Switch on/off flag.
         self.alertFlg = False
         self.toggleF = True #display toggle flag.
         self.flowCount = 0  #flow animation count
@@ -304,78 +289,73 @@ class PanelSub(wx.Panel):
         Args:
             evt ([wx.EVT_PAINT]): [description]
         """
-        # Add the Device context to draw the background.
+        # Add the wx<Device Context> to draw the background.
         dc = wx.PaintDC(self)
-        # Add the Graphics Context to draw the components.
+        lineStyle = wx.PENSTYLE_SOLID
+        # Add the wx<Graphics Context> to draw the substationn components.
         gc = wx.GraphicsContext.Create(dc)
         path = gc.CreatePath()
-        
-        #print("In paint function.")
 
-        lineStyle = wx.PENSTYLE_SOLID
         # Draw the background.
         dc.SetPen(wx.Pen('Green', width=2, style=lineStyle))
-        dc.DrawLine(40, 0, 40, 80)
+        dc.DrawLine(40, 0, 40, 80) # circult start line.
         dc.DrawLine(0, 40, 100, 40)
 
-        # Switch
+        # Draw the control switch
         color = 'Green' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         dc.DrawCircle(100, 40, 3)
-        swY = 40 if self.swOn else 30
+        swY = 40 if self.swOn else 30 # switch other side Y position.
         dc.DrawLine(100, 40, 140, swY)
 
-        # translater L
+        # left-side translater 
         dc.DrawLine(140, 40, 185, 40)
         #dc.DrawLines(self.getTransIcon(220, 6))
         gc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         path.AddCircle(200, 40, 15)
 
-        # translater R
+        # right-side translater
         color = 'Blue' if self.swOn else 'White'
         dc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         dc.DrawLine(235, 40, 400, 40)
         #dc.DrawLines(self.getTransIcon(240, 10))
         gc.SetPen(wx.Pen(color, width=2, style=lineStyle))
         path.AddCircle(220, 40, 15)
-
-        dc.DrawLine(360, 0, 360, 80)
-
-        # Reference line
-        dc.SetPen(wx.Pen('White', width=1, style=wx.PENSTYLE_DOT_DASH))
-        dc.DrawLine(100, 40, 100, 0)
-        dc.DrawLine(250, 40, 250, 80)
-
+        
         path.CloseSubpath()
         gc.DrawPath(path,0)
 
+        dc.DrawLine(360, 0, 360, 80) # circult end line.
+
+        # Reference line to the parameter's display box.
+        dc.SetPen(wx.Pen('White', width=1, style=wx.PENSTYLE_DOT_DASH))
+        dc.DrawLine(100, 40, 100, 0)
+        dc.DrawLine(250, 40, 250, 80)
+        # Draw the parameter labels.
         dc.SetPen(wx.Pen('Black', width=1, style=wx.PENSTYLE_SOLID))
         dc.DrawText("Inj_I:", 10, 60)
         dc.DrawText("Flow:", 130, 60)
         dc.DrawText("Inj_O:", 310, 60)
 
-
-        # draw the pwr flow arrow
+        # Draw the pwr flow samples.
         limit = 400 if self.swOn else 100
         if self.flowCount > limit: self.flowCount = 0
-
         dc.SetPen(wx.Pen('black', width=1, style=lineStyle))
         #dc.DrawLine(self.flowCount+10, 40, self.flowCount, 45)
         #dc.DrawLine(self.flowCount+10, 40, self.flowCount, 35)
         #dc.DrawRectangle(self.flowCount, 36, 8, 8)
         for i in range(self.flowCount//40+1):
-            posX = max(0,self.flowCount - i*40)
+            posX = max(0, self.flowCount - i*40)
             color = 'Green' if posX < 210 else 'Blue'
             dc.SetBrush(wx.Brush(color))
             dc.DrawRectangle(posX, 36, 8, 8)
-        
         self.flowCount += 10
 
 #-----------------------------------------------------------------------------
     def alterTrigger(self, altFlag):
-        if self.alertFlg == altFlag: return
+        if self.alertFlg == altFlag: return # if the state is not changed just return.
         self.alertFlg = altFlag
-        print("> %s" %str(self.alertFlg))
+        print("func[alterTrigger]: Alert triggered state: %s" %str(self.alertFlg))
         if not self.alertFlg:
             self.SetBackgroundColour(wx.Colour('Gray'))
             self.updateDisplay()
@@ -389,7 +369,7 @@ class PanelSub(wx.Panel):
         # change the display toggle flag
         self.toggleF = not self.toggleF # change the toggle flag every time we updated display
         if self.alertFlg:
-            color = 'Red' if self.toggleF else 'Gray'
+            color = 'Red' if self.toggleF else 'Gray' # toggle the bg if alert was triggered. 
             self.SetBackgroundColour(wx.Colour(color))
         self.Refresh(True)
         self.Update()

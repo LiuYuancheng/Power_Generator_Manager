@@ -231,7 +231,7 @@ class AppFrame(wx.Frame):
         """ build the GridSizer with components(button indicator) to show the 
             connection information.
         """
-        sizer = wx.GridSizer(1, 7, 5, 5)
+        sizer = wx.GridSizer(1, 8, 5, 5)
         sizer.Add(wx.StaticText(self, -1, ' Device Connection State : '))
         sizer.AddSpacer(5)
         # Raspberry PI connection.
@@ -254,6 +254,10 @@ class AppFrame(wx.Frame):
         self.plc3LedBt = wx.Button(self, label='PLC3', size=(75, 30))
         self.plc3LedBt.SetBackgroundColour(wx.Colour('GRAY'))
         sizer.Add(self.plc3LedBt)
+        # ModBus 3.
+        self.mdBusLedBt = wx.Button(self, label='ModBus', size=(75, 30))
+        self.mdBusLedBt.SetBackgroundColour(wx.Colour('GRAY'))
+        sizer.Add(self.mdBusLedBt)
         return sizer
 
 #-----------------------------------------------------------------------------

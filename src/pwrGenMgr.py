@@ -73,6 +73,7 @@ class pwrGenClient(object):
 
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
+        print("func[__init__]: Parameters inited, wait 30 sec make sure PLCs oneline.")
         time.sleep(30) # wait 30 second to make sure all the PLCs are online already
         # try to connect to the PLCs.
         self.plc1 = m221.M221(PLC1_IP)
