@@ -22,6 +22,7 @@ import threading    # create multi-thread test case.
 from random import randint
 
 import udpCom
+import tcpCom
 import serialCom
 import BgCtrl as bg
 import M2PLC221 as m221
@@ -29,6 +30,7 @@ import S7PLC1200 as s71200
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
+TCP_PORT = 5007
 TEST_MODE = False   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
@@ -82,8 +84,9 @@ class pwrGenClient(object):
         self.reConnectCount = 0 if self.plc1.connected and self.plc2.connected and self.plc3.connected else 10
         # Init the UDP server.
         # self.server = udpCom.udpServer(None, UDP_PORT)
-        self.servThread = CommThread(self, 0, "server thread")
+        self.servThread = CommThreadUDP(self, 0, "server thread")
 
+        self.mdBusThread = CommThreadTCP(self, 1, "server thread")
         # Init the state manager.
         self.stateMgr = stateManager()
         
@@ -151,6 +154,20 @@ class pwrGenClient(object):
                 self.plc3.disconnect()  # disconnect to release the socket.
             print("Try to reconnect to PLC3: %s" %str(PLC3_IP))
             self.plc3 = m221.M221(PLC3_IP)
+
+#--------------------------------------------------------------------------
+    def mdBusHandler(self, msg):
+        if self.debug: print("Incomming message: %s" %str(msg))
+        if msg == b'' or msg == b'end' or msg == b'logout':
+            return None  # get at program terminate signal.
+        # message String
+        msgStr = msg.decode('utf-8')
+        msgDict = json.loads(msgStr)
+        respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
+        if msgDict['Cmd'] == 'Get':
+             if msgDict['Parm'] == 'MdBs':
+                 pass   
+        return respStr
 
 #--------------------------------------------------------------------------
     def msgHandler(self, msg):
@@ -648,7 +665,7 @@ class stateManager(object):
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 
-class CommThread(threading.Thread):
+class CommThreadUDP(threading.Thread):
     """ Thread to test the UDP server/insert the tcp server in other program.""" 
     def __init__(self, parent, threadID, name):
         threading.Thread.__init__(self)
@@ -667,6 +684,30 @@ class CommThread(threading.Thread):
         """ Stop the udp server. Create a endclient to bypass the revFrom() block."""
         self.server.serverStop()
         endClient = udpCom.udpClient(('127.0.0.1', UDP_PORT))
+        endClient.disconnect()
+        endClient = None
+
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
+class CommThreadTCP(threading.Thread):
+    """ Thread to test the TCP server/insert the tcp server in other program.""" 
+    def __init__(self, parent, threadID, name):
+        threading.Thread.__init__(self)
+        self.threadName = name
+        self.parent = parent
+        self.server = tcpCom.tcpServer(None, TCP_PORT, connectNum=1)
+
+    def run(self):
+        """ Start the tcp server's main message handling loop."""
+        print("Server thread run() start.")
+        self.server.serverStart(handler=self.parent.mdBusHandler)
+        print("Server thread run() end.")
+        self.threadName = None # set the thread name to None when finished.
+
+    def stop(self):
+        """ Stop the tcp server. Create a endclient to bypass the rev() block."""
+        self.server.serverStop()
+        endClient =tcpCom.tcpClient(('127.0.0.1', TCP_PORT))
         endClient.disconnect()
         endClient = None
 
