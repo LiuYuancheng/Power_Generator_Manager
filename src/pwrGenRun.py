@@ -20,13 +20,14 @@ import wx.gizmos as gizmos
 from queue import Queue 
 
 import udpCom
+import tcpCom
 import pwrGenGobal as gv
 import pwrGenPanel as pl
 
 PERIODIC = 250  # main UI loop call back period.(ms)
 CMD_QSZ = 10    # communication cmd queue size.
 RECON_T = 10    # Re-connect time interval count.
-TEST_MD = False
+TEST_MD = True
 RSP_IP = '127.0.0.1' if TEST_MD else '192.168.10.244'
 
 #-----------------------------------------------------------------------------
@@ -139,12 +140,16 @@ class AppFrame(wx.Frame):
         self.reConCount = 0   # re-connect count: 0 not need reconnect, 1 start to reconnect.  
         self.clieComThread = CommThread(self, 0, "client thread")
         self.clieComThread.start()
+        # Add the modbug linker.
+        self.mBlinker = tcpCom.tcpClient((RSP_IP, gv.gTcpPort))
         # Set the periodic call back
         crtTime = time.time()
         self.lastPeriodicTime = {   'GUI': crtTime, 
                                     'State': crtTime, 
                                     'Data': crtTime, 
-                                    'Mem': crtTime}
+                                    'Mem': crtTime,
+                                    'MDBus': crtTime
+                                    }
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.periodic)
         self.timer.Start(PERIODIC)  # every 500 ms
@@ -511,7 +516,10 @@ class AppFrame(wx.Frame):
         if (now - self.lastPeriodicTime['Mem'] >= 5*gv.gUpdateRate) and gv.iSubFrame:
             self.lastPeriodicTime['Mem'] = now
             self.connectReq('GetSub', parm={'Addr':'ff00'})
-            
+            msg = json.dumps({'Cmd': 'Get', 'Parm': 'MdBs'})
+            result = self.mBlinker.sendMsg(msg, resp=True)
+            print(">>>> %s" %str(result))
+
 #-----------------------------------------------------------------------------
     def onClose(self, event):
         self.clieComThread.stop()

@@ -27,11 +27,12 @@ import serialCom
 import BgCtrl as bg
 import M2PLC221 as m221
 import S7PLC1200 as s71200
+import Ieee754FBcvt
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
-TCP_PORT = 5007
-TEST_MODE = False   # Local test mode flag.
+TCP_PORT = 502
+TEST_MODE = True   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
 PLC2_IP = '192.168.10.73'
@@ -84,9 +85,9 @@ class pwrGenClient(object):
         self.reConnectCount = 0 if self.plc1.connected and self.plc2.connected and self.plc3.connected else 10
         # Init the UDP server.
         # self.server = udpCom.udpServer(None, UDP_PORT)
-        self.servThread = CommThreadUDP(self, 0, "server thread")
+        self.servThread = CommThreadUDP(self, 0, "UDP server thread")
 
-        self.mdBusThread = CommThreadTCP(self, 1, "server thread")
+        self.mdBusThread = CommThreadTCP(self, 1, "TCP server thread")
         # Init the state manager.
         self.stateMgr = stateManager()
         
@@ -107,6 +108,7 @@ class pwrGenClient(object):
         print("UDP echo-server main loop start")
         #self.server.serverStart(handler=self.msgHandler)
         self.servThread.start()
+        self.mdBusThread.start()
         print("Manager main loop start.")
         while self.bgCtrler.bgRun():
             # Get the 3 PLC load state:
@@ -157,7 +159,7 @@ class pwrGenClient(object):
 
 #--------------------------------------------------------------------------
     def mdBusHandler(self, msg):
-        if self.debug: print("Incomming message: %s" %str(msg))
+        if self.debug: print("Incomming TCP message: %s" %str(msg))
         if msg == b'' or msg == b'end' or msg == b'logout':
             return None  # get at program terminate signal.
         # message String
@@ -166,7 +168,10 @@ class pwrGenClient(object):
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         if msgDict['Cmd'] == 'Get':
              if msgDict['Parm'] == 'MdBs':
-                 pass   
+                #respDict = {'Cmd': 'MdBs',
+                #            'Param': '000040010C'+ self.stateMgr.getModBusStr()
+                #}
+                return '000040010C'+ self.stateMgr.getModBusStr()     
         return respStr
 
 #--------------------------------------------------------------------------
@@ -176,7 +181,7 @@ class pwrGenClient(object):
             msg = { 'Cmd': str(***),
                     'Parm': {}}
         """
-        if self.debug: print("Incomming message: %s" %str(msg))
+        if self.debug: print("Incomming UDP message: %s" %str(msg))
         if msg == b'' or msg == b'end' or msg == b'logout':
             return None  # get at program terminate signal.
         # message String
@@ -607,6 +612,15 @@ class stateManager(object):
             self.subMemDict["ff00"] = '1'
         return json.dumps(self.subMemDict)
 
+    def getModBusStr(self):
+        """[summary]
+
+        Returns:
+            [type]: [description]
+        """
+        dataList = [Ieee754FBcvt.F2B(float(val)) for val in self.subMemDict.values()]
+        return "".join(dataList)
+
 #--------------------------------------------------------------------------
     def getSubInfoTh(self):
         """ Used for trigger the substation attack display show up.
@@ -675,7 +689,7 @@ class CommThreadUDP(threading.Thread):
 
     def run(self):
         """ Start the udp server's main message handling loop."""
-        print("Server thread run() start.")
+        print("UDP Server thread run() start.")
         self.server.serverStart(handler=self.parent.msgHandler)
         print("Server thread run() end.")
         self.threadName = None # set the thread name to None when finished.
@@ -699,7 +713,7 @@ class CommThreadTCP(threading.Thread):
 
     def run(self):
         """ Start the tcp server's main message handling loop."""
-        print("Server thread run() start.")
+        print("TCP Server thread run() start.")
         self.server.serverStart(handler=self.parent.mdBusHandler)
         print("Server thread run() end.")
         self.threadName = None # set the thread name to None when finished.
