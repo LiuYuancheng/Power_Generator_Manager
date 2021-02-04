@@ -30,7 +30,7 @@ SIRIMG_PATH = os.path.join(dirpath, IMG_FD, "siren.png")        # siren on image
 #-------<GLOBAL VARIABLES (start with "g")>------------------------------------
 # VARIABLES are the built in data type.
 gUdpPort = 5005             # UDP communication port.
-gTcpPort = 502             # TCP communication port.
+gTcpPort = 5009             # TCP communication port.
 gAlphaValue = 200           # transparent alphaValue.(0-255)
 gDisPnlPos  = (600, 780)    # Display panel popup default position.
 gSubPnlPos  = (1100, 100)   # Substation panel popup default position.

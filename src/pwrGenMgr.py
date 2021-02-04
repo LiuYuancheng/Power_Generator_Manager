@@ -17,7 +17,7 @@ import time
 import json
 import re
 import csv
-import _thread # python2 thread is changed to '_thread' in python3
+import _thread      # python2's built in 'thread' is changed to '_thread' in python3
 import threading    # create multi-thread test case.
 from random import randint
 
@@ -31,7 +31,7 @@ import Ieee754FBcvt
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
-TCP_PORT = 502
+TCP_PORT = 5009
 TEST_MODE = True   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
@@ -171,7 +171,16 @@ class pwrGenClient(object):
                 #respDict = {'Cmd': 'MdBs',
                 #            'Param': '000040010C'+ self.stateMgr.getModBusStr()
                 #}
-                return '000040010C'+ self.stateMgr.getModBusStr()     
+                #unitId = 16
+                #functionCode = 5
+                #coilId = 1
+                #req = struct.pack('12B', 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, int(unitId), int(functionCode), 0x00, int(coilId),
+                #      0xff,
+                #      0x00)
+
+                #return b'\x41\x24\x00\x00\x00\x05\x00\x41\x24\x01\x00'
+                return b'\x00\x01\x00\x00\x00\x06\x15\x03\x00\x6B\x00\x03'
+                #return '000040010C'+ self.stateMgr.getModBusStr()     
         return respStr
 
 #--------------------------------------------------------------------------

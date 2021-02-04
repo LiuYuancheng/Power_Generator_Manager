@@ -93,7 +93,7 @@ class SubDisplayFrame(wx.Frame):
         self.detECB.Bind(wx.EVT_CHECKBOX, self.setAutoDetect)
         hSizer.Add(self.detECB, flag=wx.CENTER, border=2)
         hSizer.AddSpacer(5)
-        self.matuBt = wx.Button(self, wx.ID_ANY, ' Manul Mode ', style=wx.BU_LEFT, size=(100,20) )
+        self.matuBt = wx.Button(self, wx.ID_ANY, ' Manual Mode ', style=wx.BU_LEFT, size=(100,20) )
         self.matuBt.Bind(wx.EVT_CHECKBOX, self.turnManuMD)
         hSizer.Add(self.matuBt, flag=wx.CENTER, border=2)
         self.matuBt.Hide()
