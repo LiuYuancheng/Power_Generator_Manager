@@ -63,7 +63,7 @@ This project contains two sections:
 | pwGenRun.py              | python 3      | This module is used to create the control panel to connect to the Raspberry PI generator control by UDP. |
 | S1new_192_168_10_72.smbp | PLC           | PLC-1 ladder diagram.                                        |
 | S3new_192_168_10_71.smbp | PLC           | PLC-3 ladder diagram.                                        |
-| S7PLC1200.py             | python 3      | his module is used to connect to the siemens s7-1200 PLC.    |
+| S7PLC1200.py             | python 3      | This module is used to connect to the siemens s7-1200 PLC.   |
 | serialCom.py             | python 3      | This module will inheritance the python built-in serial module with automatically serial port serach and connection function. |
 | udpCom.py                | python 3      | This module will provide a UDP client and server communication API. |
 
