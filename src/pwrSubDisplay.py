@@ -180,10 +180,10 @@ class SubDisplayFrame(wx.Frame):
 
         # Calculate the threshold value if the auto-detection function is turned on. 
         if gv.gAutoDet:
-            if memDict['ff00'] == '0':
+            if memDict['ff10'] == '0':
                 self.attackOn = True
                 self.thresholdLb.SetForegroundColour((255, 0, 0))
-            if memDict['ff00'] == '1':
+            if memDict['ff10'] == '1':
                 self.attackOn = False
                 self.thresholdLb.SetForegroundColour((0, 0, 0))
             thVal = self.getThreshold(memDict)

@@ -31,7 +31,7 @@ import Ieee754FBcvt
 
 APP_NAME = "pwrGenMgr"
 UDP_PORT = 5005
-TCP_PORT = 5009
+TCP_PORT = 5009     # set to None if don't want tranfer data under modebus
 TEST_MODE = True   # Local test mode flag.
 TIME_INT = 1        # time interval to fetch the load.
 PLC1_IP = '192.168.10.72'
@@ -54,7 +54,7 @@ CSV_VAL = 'pwrSubParm.csv'
 #   M20 -> Q0.2 track B pwr
 #   M60 -> Q0.3 city LED
 #   M50 -> All power down.
-
+    
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class pwrGenClient(object):
@@ -63,22 +63,22 @@ class pwrGenClient(object):
         be inited to response the UI control's request. 
     """
     def __init__(self, parent, debug=True):
-        # Set the load number.
         self.parent = parent
-        self.loadNum = 0
-        self.autoCtrl = False   # Gen auto control based on load number.
-        self.debug = debug      # debug mode flag.
         self.bgCtrler = bg.BgController(APP_NAME)
+        self.loadNum = 0        # number of loads.
+        self.autoCtrl = False   # generator auto control based on load number.
+        self.debug = debug      # debug mode flag.
         self.atkLocker = False  # lock the new incoming attack request if doing attack simulation.
-        self.subTHActFlag  = 0 # Threshold active flag 0 normal case, 1 under attackc, 2 attack stopped.
+        self.stSubAtkFlag  = 0  # Stealthy substation attack active flag 0 normal case, 1 under attack.
         self.mainPwrSet = False # Wheter we need to set/update main power in the next around of loop.  
         self.mainPwrStr = 'on'  # Main power set string 'on'/'off'
 
         # try to connect to the arduino by serial port.
         self.serialComm = serialCom.serialCom(None, baudRate=115200)
         print("func[__init__]: Parameters inited, wait 30 sec make sure PLCs oneline.")
-        time.sleep(30) # wait 30 second to make sure all the PLCs are online already
+        time.sleep(40) # wait 40 second to make sure all the PLCs are online already
         # try to connect to the PLCs.
+        # ping the IP address first.
         self.plc1 = m221.M221(PLC1_IP)
         self.plc2 = s71200.S7PLC1200(PLC2_IP)
         self.plc3 = m221.M221(PLC3_IP)
@@ -86,15 +86,14 @@ class pwrGenClient(object):
         # Init the UDP server.
         # self.server = udpCom.udpServer(None, UDP_PORT)
         self.servThread = CommThreadUDP(self, 0, "UDP server thread")
-
-        self.mdBusThread = CommThreadTCP(self, 1, "TCP server thread")
-        # Init the state manager.
+        # Init the TCP modbus data server.
+        if TCP_PORT: self.mdBusThread = CommThreadTCP(self, 1, "TCP server thread")
+        # Init the state information manager.
         self.stateMgr = stateManager()
-        
-        # init the plat form state:
-        if self.serialComm and not TEST_MODE:
+        # Power generator nit the platform state:
+        if self.serialComm and self.serialComm.connected and not TEST_MODE:
             self.setGenState("50.00:11.00:green:green:green:green:slow:off")
-            
+        # Connection state log.
         print('Init finished [Test mode:%s], connection state :\n' %str(TEST_MODE))
         print('Arduino connection : %s' %str(self.serialComm.connected))
         print('PLC 1 [%s] connection: %s' %(PLC1_IP, self.plc1.connected))
@@ -103,31 +102,31 @@ class pwrGenClient(object):
 
 #--------------------------------------------------------------------------
     def mainLoop(self):
-        """ Controler request handling loop.
-        """
-        print("UDP echo-server main loop start")
-        #self.server.serverStart(handler=self.msgHandler)
+        """ Controler request handling loop."""
+        print("echo-servers start.")
         self.servThread.start()
-        self.mdBusThread.start()
+        if TCP_PORT: self.mdBusThread.start()
         print("Manager main loop start.")
         while self.bgCtrler.bgRun():
-            # Get the 3 PLC load state:
-            if not TEST_MODE:
+            if TEST_MODE:
+                # Local simulation mode test:
+                self.loadNum = randint(0,3)
+            else:
                 if self.mainPwrSet:
                     self.setMainPwr(self.mainPwrStr)
                     self.mainPwrSet = False
-                if self.atkLocker:continue # dont operate the plc when attack happens
+                if self.atkLocker:continue # dont change the plc when attack is happening
+                self.loadNum = self.stateMgr.getLoadNum()
                 self.getLoadState()
+                # Try reconnect to the PLC if we are in real mode.
                 if self.reConnectCount > 0:
-                    self.reConnectCount -= 1
                     print(">>> reconnect PLC in %s sec" %str(self.reConnectCount))
-            if TEST_MODE:
-                self.loadNum+=1
-                self.autoCtrlGen(self.loadNum%7)
-            if self.reConnectCount == 1:
-                self.plcReconnect()
+                    if self.reConnectCount == 1: self.plcReconnect() # Do the reconnect
+                    self.reConnectCount -= 1
+            self.autoCtrlGen(self.loadNum) # get the load number.
             time.sleep(TIME_INT)
-        # Stop the program and stop all the connection
+        
+        # Stop the program and disconnect all the connection.
         self.servThread.stop()
         self.servThread = None
         if self.serialComm: self.serialComm.close()
@@ -139,26 +138,28 @@ class pwrGenClient(object):
 #--------------------------------------------------------------------------
     def plcReconnect(self):
         """ Try to reconnect the PLC if the plc is not connect."""
-        if self.plc1 is None or (not self.plc1.connected):
-            if not self.plc1 is None:
-                self.plc1.disconnect()  # disconnect to release the socket.
+        if not self.plc1.connected:
             print("Try to reconnect to PLC1: %s" %str(PLC1_IP))
+            self.plc1.disconnect()  # disconnect to release the socket.
             self.plc1 = m221.M221(PLC1_IP)
+            time.sleep(0.1)
 
-        if self.plc2 is None or (not self.plc2.connected):
-            if not self.plc2 is None:
-                self.plc2.disconnect()  # disconnect to release the socket.
+        if not self.plc2.connected:
             print("Try to reconnect to PLC2: %s" %str(PLC2_IP))
+            self.plc2.disconnect()  # disconnect to release the socket.
             self.plc2 = s71200.S7PLC1200(PLC2_IP)
+            time.sleep(0.1)
 
-        if self.plc3 is None or (not self.plc3.connected):
-            if not self.plc3 is None:
-                self.plc3.disconnect()  # disconnect to release the socket.
+        if not self.plc3.connected:     
             print("Try to reconnect to PLC3: %s" %str(PLC3_IP))
+            self.plc3.disconnect()  # disconnect to release the socket.
             self.plc3 = m221.M221(PLC3_IP)
 
 #--------------------------------------------------------------------------
     def mdBusHandler(self, msg):
+        """ Modebus request message handler function.
+            incomming message sample: msg = { 'Cmd': str(***), 'Parm': {}}
+        """
         if self.debug: print("Incomming TCP message: %s" %str(msg))
         if msg == b'' or msg == b'end' or msg == b'logout':
             return None  # get at program terminate signal.
@@ -168,18 +169,18 @@ class pwrGenClient(object):
         respStr = json.dumps({'Cmd': 'Set', 'Param': 'Done'}) # response string.
         if msgDict['Cmd'] == 'Get':
              if msgDict['Parm'] == 'MdBs':
-                #respDict = {'Cmd': 'MdBs',
-                #            'Param': '000040010C'+ self.stateMgr.getModBusStr()
-                #}
+                respDict = {'Cmd': 'MdBs',
+                            'Param': '000040010C'+ self.stateMgr.getModBusStr()
+                            }
+                respStr = json.dumps(respDict) 
                 #unitId = 16
                 #functionCode = 5
                 #coilId = 1
                 #req = struct.pack('12B', 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, int(unitId), int(functionCode), 0x00, int(coilId),
                 #      0xff,
                 #      0x00)
-
                 #return b'\x41\x24\x00\x00\x00\x05\x00\x41\x24\x01\x00'
-                return b'\x00\x01\x00\x00\x00\x06\x15\x03\x00\x6B\x00\x03'
+                #return b'\x00\x01\x00\x00\x00\x06\x15\x03\x00\x6B\x00\x03'
                 #return '000040010C'+ self.stateMgr.getModBusStr()     
         return respStr
 
@@ -236,8 +237,7 @@ class pwrGenClient(object):
             # PLC  set request.
             # Main power
             if 'Mpwr' in msgDict['Parm'].keys():
-                pass
-                #self.setMainPwr(msgDict['Parm']['Mpwr'])
+                self.setMainPwr(msgDict['Parm']['Mpwr'])
             # TrackA and B all sensor power
             if 'Spwr' in msgDict['Parm'].keys():
                 self.setSensorPwr(msgDict['Parm']['Spwr'])
@@ -257,12 +257,7 @@ class pwrGenClient(object):
             self.stateMgr.updateGenPlcState(msgDict['Parm'])
         elif msgDict['Cmd'] == 'GetSub':
             # get the Substation memory value;\
-            if self.subTHActFlag !=0:
-                # the reason we add this is the subTHActFlag is changed in the 
-                respStr = self.stateMgr.getSubInfo(self.subTHActFlag)
-                self.subTHActFlag = 0
-            else: 
-                respStr = self.stateMgr.getSubInfo()
+            respStr = self.stateMgr.getSubInfo(self.stSubAtkFlag)
         # Send back the response string.
         return respStr
 
@@ -304,10 +299,8 @@ class pwrGenClient(object):
             except Exception as err:
                 print("PLC3[%s] data read error:\n%s" %(PLC3_IP, err))
                 self.plc3.connected = False
-        
         self.stateMgr.updateLoadPlcState(loadDict)
-        self.autoCtrlGen(self.stateMgr.getLoadNum()) # get the load number.
-
+        
 #--------------------------------------------------------------------------
     def autoCtrlGen(self, loadCount):
         """"Auto adjust the gen based on the load number.
@@ -318,29 +311,18 @@ class pwrGenClient(object):
         """
         loadCount = self.stateMgr.getLoadNum(keyList=('Airp', 'Stat', 'TrkA'))
         if (not self.autoCtrl) or (self.loadNum == loadCount):
-            return # no change.
-        self.loadNum  = loadCount
-        #freqList= ['52.00', '51.20', '50.80', '50.40', '50.00', '50.00', '50.00', '49.8']
-        #sirenSt = 'on' if self.loadNum < 2 else 'off'
-        #color = 'red' if self.loadNum < 4 else 'green'
-        #if self.loadNum == 7: color = 'amber'
-        #msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color,color,color, 'fast', sirenSt))
-        
-        freqList= ['51.2', '50.8', '50.0', '49.8']
+            return  # no change.
+        self.loadNum = loadCount
+        freqList = ['51.2', '50.8', '50.0', '49.8']
         sirenSt = 'off'
         color = 'red' if self.loadNum == 0 else 'green'
-        msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color,color,color, 'fast', sirenSt))
+        msgStr = ':'.join((freqList[self.loadNum], '11.00', color, color, color, color, 'fast', sirenSt))
         self.setGenState(msgStr)
         
 #--------------------------------------------------------------------------
-    def setMainPwrStr(self, val):
-        self.mainPwrSet = True
-        self.mainPwrStr = val
-
-#--------------------------------------------------------------------------
     def setMainPwr(self, val):
-        """ Set the system main power PLC3[M6]. 0-off, 1-on."""
-        self.autoCtrl = False
+        """ Set the system main power. 0-off, 1-on."""
+        self.autoCtrl = False 
         pwrVal = 1 if val == 'on' else 0
         ledVal = 0 if val == 'on' else 1
         plc2Val = True if val == 'on' else False
@@ -364,10 +346,9 @@ class pwrGenClient(object):
         return
         # below is the one using new PLC lider diagram follow the function introduction.
         if not self.plc3.connected:
-            if self.debug: print('PLC3 not connected, can not set system main power.')
+            print('PLC3 not connected, can not set system main power.')
             return
-        parm = 1 if val == 'on' else 0
-        self.plc3.writeMem('M6', parm)
+        self.plc3.writeMem('M6', pwrVal)
 
 #--------------------------------------------------------------------------
     def setMotoSpeed(self, val):
@@ -413,22 +394,22 @@ class pwrGenClient(object):
         Returns:
             [None]: [description]
         """
-        if self.serialComm:
+        if self.serialComm and self.serialComm.connected:
             self.serialComm.write(stateStr.encode('utf-8'))
-            valList = stateStr.split(':')
-            if len(valList) != 8:
-                print("Error: serialComm str parameter missing: %s" %stateStr)
-                return None
-            else:
-                genDict = {'Freq': valList[0],
-                           'Volt': valList[1],
-                           'Fled': valList[2],
-                           'Vled': valList[3],
-                           'Mled': valList[4],
-                           'Pled': valList[5],
-                           'Smok': valList[6],
-                           'Sirn': valList[7]}
-                self.stateMgr.updateGenSerState(genDict)
+        valList = stateStr.split(':')
+        if len(valList) != 8:
+            print("Error: serialComm str parameter missing: %s" %stateStr)
+            return None
+        else:
+            genDict = {'Freq': valList[0],
+                        'Volt': valList[1],
+                        'Fled': valList[2],
+                        'Vled': valList[3],
+                        'Mled': valList[4],
+                        'Pled': valList[5],
+                        'Smok': valList[6],
+                        'Sirn': valList[7]}
+            self.stateMgr.updateGenSerState(genDict)
 
 #--------------------------------------------------------------------------
     def startAttack(self, threadName):
@@ -448,7 +429,7 @@ class pwrGenClient(object):
             time.sleep(5) # wait 5 sec then start the attack.
             print(">>> Start the Stealthy attack.")
             self.setGenState("49.89:11.00:red:red:red:red:off:on")
-            self.subTHActFlag = 1 # put the attack appearence after the module have action.
+            self.stSubAtkFlag = 1 # put the attack appearence after the module have action.
             time.sleep(1)
             if self.plc1.connected: self.plc1.writeMem('M60', 1)               
             time.sleep(1)
@@ -495,8 +476,7 @@ class pwrGenClient(object):
 
 #--------------------------------------------------------------------------
     def stopAttack(self):
-        """ recover the PLC and power generator state after attack.
-        """
+        """ recover the PLC and power generator state after attack."""
         # Recover the power generator
         self.atkLocker = True
         self.setGenState("52.00:11.00:green:green:green:green:off:off")                
@@ -510,7 +490,7 @@ class pwrGenClient(object):
         if self.plc3.connected:
             self.plc3.writeMem('M10', 1)
         self.atkLocker = False
-        self.subTHActFlag = 2
+        self.stSubAtkFlag = 0
 
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
@@ -522,7 +502,7 @@ class stateManager(object):
         self.subParms = {'Nml':[[] for a in range(4)], 
                         'Atk':[[] for a in range(4)]}        
         self.loadCSVParm(os.path.join(os.path.dirname(__file__), CSV_VAL))
-        self.AtkFlag = False # the flag to identify what kind of data we want to fetch.
+        self.AtkFlag = False # The flag to identify whether fetch the attack data.
         # Generator state dictionary.
         self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
                             'Volt': '11.00',    # voltage (dd.dd)
@@ -535,40 +515,36 @@ class stateManager(object):
                             'Mspd': 'off',      # moto speed (high/low/off)
                             'Sirn': 'off',      # siren (on/off)
                             'Spwr': 'off',      # sensor power (on/off)
-                            'Mpwr': 'on',        # main power (on/off)
+                            'Mpwr': 'on',       # main power (on/off)
                             'Mode': 0           # control mode.
                         }
         # Power load state dictionary. 
         self.loadDict = {   'Indu': 0,      # Industry area
-                            'Airp': 1,      # Air port
+                            'Airp': 1,      # Airport runway
                             'Resi': 0,      # Residential area
                             'Stat': 1,      # Stataion power
                             'TrkA': 0,      # Track A power
                             'TrkB': 1,      # Track B power
                             'City': 0,      # City power
                          }
-
         # Substation memory dictrionary.
         self.subMemDict = {
-            'ff00': '0',  #
-            'ff01': '0',
-            'ff02': '0',
-            'ff03': '0',
-            'ff04': '0',
-            'ff05': '0',
-            'ff06': '0',
-            'ff07': '0',
-            'ff08': '0',
-            'ff09': '0',
-            'ff10': '0',
+            'ff00': '0',    # FF00:Pkm
+            'ff01': '0',    # FF01:Qkm
+            'ff02': '0',    # FF02:Pmk
+            'ff03': '0',    # FF03:Qkm
+            'ff04': '0',    # FF04:Pk
+            'ff05': '0',    # FF05:Qk
+            'ff06': '0',    # FF06:Pm
+            'ff07': '0',    # FF07:Qm
+            'ff08': '0',    # FF08:Vk
+            'ff09': '0',    # FF09:Vm
+            'ff10': '0',    # Attack flag
         }
 
 #--------------------------------------------------------------------------
     def printState(self):
-        """ Test function used for debug.(Print all current state.)
-        Returns:
-            [type]: [description]
-        """
+        """ Test function used for debug.(Print all current state."""
         print("self.genDict: \n %s \n" %str(self.genDict))
         print("self.loadDict: \n %s \n" %str(self.loadDict))
         print("self.subMemDict: \n %s \n" %str(self.subMemDict))
@@ -576,10 +552,7 @@ class stateManager(object):
 
 #--------------------------------------------------------------------------
     def loadCSVParm(self, csvFile):
-        """[summary]
-        Args:
-            csvFile ([type]): [description]
-        """
+        """ Load the parameters data from the CSV file. """
         try:
             with open(csvFile, 'r') as file:
                 reader = csv.reader(file)
@@ -587,12 +560,9 @@ class stateManager(object):
                 for row in reader: # remove header.
                     if rowCnt == 0:
                         rowCnt +=1
-                        continue
-                    idx = int(row[1])
-                    if int(row[0]) == 0:
-                        self.subParms['Nml'][idx].append(row[2:])
-                    else:
-                        self.subParms['Atk'][idx].append(row[2:])
+                        continue    # ignore the title row.
+                    tag = 'Nml' if int(row[0]) == 0 else 'Atk'
+                    self.subParms[tag][int(row[1])].append(row[2:])
         except Exception as err:
             print("CSV file IO Error: %s" %str(err))
 
@@ -602,44 +572,25 @@ class stateManager(object):
         return json.dumps(self.genDict)
 
 #--------------------------------------------------------------------------
-    def getSubInfo(self, thFlag=None):
-        """ Return the generator state json string.
-            stflag = 0/None : normal case, return the 
+    def getSubInfo(self,atkFlag=None):
+        """ Return the generator state parameter json string.
+            atkFlag = 0/None : normal case 
+            atkFlag = 1: attack started
         """
-        loadNum = 3 if TEST_MODE else sum((self.loadDict['Airp'], self.loadDict['Stat'], self.loadDict['TrkA']))
-        valIdx = randint(0,18)
-        statStr = 'Atk' if self.AtkFlag else 'Nml'
-        statStr = 'Nml'
+        loadNum = 3 if TEST_MODE else sum(
+            (self.loadDict['Airp'], self.loadDict['Stat'], self.loadDict['TrkA']))
+        valIdx = randint(0, 5) if atkFlag else randint(0, 18)
+        statStr = 'Atk' if atkFlag else 'Nml'
         for i in range(10):
             self.subMemDict["ff{:02d}".format(i)] = self.subParms[statStr][loadNum][valIdx][i]
-            #print(self.subMemDict["ff{:02d}".format(i)])
-        if thFlag == 1: 
-            self.AtkFlag = True
-            self.subMemDict["ff00"] = '0'
-        if thFlag == 2:
-            self.AtkFlag = False
-            self.subMemDict["ff00"] = '1'
+        self.subMemDict["ff10"] = '0' if atkFlag else '1'
         return json.dumps(self.subMemDict)
-
-    def getModBusStr(self):
-        """[summary]
-
-        Returns:
-            [type]: [description]
-        """
-        dataList = [Ieee754FBcvt.F2B(float(val)) for val in self.subMemDict.values()]
-        return "".join(dataList)
 
 #--------------------------------------------------------------------------
-    def getSubInfoTh(self):
-        """ Used for trigger the substation attack display show up.
-        Returns:
-            [type]: [description]
-        """
-        for i in range(10):
-            self.subMemDict["ff{:02d}".format(i)] = '0'
-            #print(self.subMemDict["ff{:02d}".format(i)])
-        return json.dumps(self.subMemDict)
+    def getModBusStr(self):
+        """ Convert the substation message dict to ModBus string format."""
+        dataList = [Ieee754FBcvt.F2B(float(val)) for val in self.subMemDict.values()]
+        return "".join(dataList)
 
 #--------------------------------------------------------------------------
     def getLoadInfo(self):
@@ -685,22 +636,25 @@ class stateManager(object):
         """ Update the load PLc state. """
         for keyStr in changeDict.keys():
             self.loadDict[keyStr] = changeDict[keyStr]
-#--------------------------------------------------------------------------
-#--------------------------------------------------------------------------
 
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 class CommThreadUDP(threading.Thread):
-    """ Thread to test the UDP server/insert the tcp server in other program.""" 
+    """ Sub-thread running parallel with the main thread to handle the UDP 
+        request from the control UI program running on the SCADA PC.
+    """ 
     def __init__(self, parent, threadID, name):
         threading.Thread.__init__(self)
         self.threadName = name
         self.parent = parent
         self.server = udpCom.udpServer(None, UDP_PORT)
+        print("CommThreadUDP:   UDP data handling server thread started.")
 
     def run(self):
         """ Start the udp server's main message handling loop."""
-        print("UDP Server thread run() start.")
+        print("CommThreadUDP:   UDP Server thread run() start.")
         self.server.serverStart(handler=self.parent.msgHandler)
-        print("Server thread run() end.")
+        print("CommThreadUDP:   Server thread run() end.")
         self.threadName = None # set the thread name to None when finished.
 
     def stop(self):
@@ -713,18 +667,21 @@ class CommThreadUDP(threading.Thread):
 #--------------------------------------------------------------------------
 #--------------------------------------------------------------------------
 class CommThreadTCP(threading.Thread):
-    """ Thread to test the TCP server/insert the tcp server in other program.""" 
+    """ Sub-thread running parallel with the main thread to feed back the ModBus 
+        TCP message.
+    """ 
     def __init__(self, parent, threadID, name):
         threading.Thread.__init__(self)
         self.threadName = name
         self.parent = parent
         self.server = tcpCom.tcpServer(None, TCP_PORT, connectNum=1)
+        print("CommThreadTCP:   TCP ModBus msg handling server thread started.")
 
     def run(self):
         """ Start the tcp server's main message handling loop."""
-        print("TCP Server thread run() start.")
+        print("CommThreadTCP:   TCP Server thread run() start.")
         self.server.serverStart(handler=self.parent.mdBusHandler)
-        print("Server thread run() end.")
+        print("CommThreadTCP:   Server thread run() end.")
         self.threadName = None # set the thread name to None when finished.
 
     def stop(self):
