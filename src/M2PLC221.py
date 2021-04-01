@@ -15,6 +15,8 @@
 # License:     YC @ NUS
 #-----------------------------------------------------------------------------
 import socket
+import platform    # For getting the operating system name
+import subprocess  # For executing a shell command
 from platform import python_version
 
 # Check the python version, if < 3.6 use bytes.dencode('hex') to decode the 
@@ -57,13 +59,26 @@ class M221(object):
         self.ip = ip
         self.debug = debug
         self.connected = False
-        self.plcAgent = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.plcAgent.connect((self.ip, 502))
-            self.connected = True
-        except OSError as error:
-            print("M221: Can not access to the PLC [%s]" % str(self.plcAgent))
-            print(error)
+        self.plcAgent = None
+        if self._pingPLC(self.ip):
+            self.plcAgent = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.plcAgent.connect((self.ip, 502))
+                self.connected = True
+            except OSError as error:
+                print("M221: Can not access to the PLC [%s]" % str(self.plcAgent))
+                print(error)
+
+#-----------------------------------------------------------------------------
+    def _pingPLC(self, host):
+        """ Returns True if host (str) responds to a ping request. Remember that a host 
+            may not respond to a ping (ICMP) request even if the host name is valid.
+        """
+        # Option for the number of packets as a function of
+        param = '-n' if platform.system().lower()=='windows' else '-c'
+        # Building the command. Ex: "ping -c 1 google.com"
+        command = ['ping', param, '1', host]
+        return subprocess.call(command) == 0
 
 #-----------------------------------------------------------------------------
     def readMem(self):
@@ -97,7 +112,8 @@ class M221(object):
     def disconnect(self):
         """ Disconnect from PLC."""
         print("M221:    Disconnect from PLC.")
-        self.plcAgent.close()
+        self.connected = False
+        if self.plcAgent: self.plcAgent.close()
 
 #-----------------------------------------------------------------------------
 def testCase(mode):

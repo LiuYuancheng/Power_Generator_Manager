@@ -13,6 +13,8 @@
 # License:     YC @ NUS
 #-----------------------------------------------------------------------------
 import time
+import platform    # For getting the operating system name
+import subprocess  # For executing a shell command
 import snap7
 from snap7.util import *
 
@@ -31,12 +33,25 @@ class S7PLC1200(object):
         self.debug = debug
         self.connected = False
         self.memAreaDict = {'m': 0x83, 'q': 0x82, 'i': 0x81} # memory access dict.
-        self.plc = snap7.client.Client()
-        try:
-            self.plc.connect(ip, 0, 1)  # connect to the PLC
-            self.connected = True
-        except snap7.snap7exceptions.Snap7Exception as error:
-            print('S7PLC1200 ERROR: %s' %error)
+        self.plc = None
+        if self._pingPLC(self.ip):
+            self.plc = snap7.client.Client()
+            try:
+                self.plc.connect(ip, 0, 1)  # connect to the PLC
+                self.connected = True
+            except snap7.snap7exceptions.Snap7Exception as error:
+                print('S7PLC1200 ERROR: %s' %error)
+
+#-----------------------------------------------------------------------------
+    def _pingPLC(self, host):
+        """ Returns True if host (str) responds to a ping request. Remember that a host 
+            may not respond to a ping (ICMP) request even if the host name is valid.
+        """
+        # Option for the number of packets as a function of
+        param = '-n' if platform.system().lower()=='windows' else '-c'
+        # Building the command. Ex: "ping -c 1 google.com"
+        command = ['ping', param, '1', host]
+        return subprocess.call(command) == 0
 
 #-----------------------------------------------------------------------------
     def getMem(self, mem, returnByte=False):
@@ -113,7 +128,8 @@ class S7PLC1200(object):
     def disconnect(self):
         """ Disconnect from PLC."""
         print("S7PLC1200:    Disconnect from PLC.")
-        self.plc.disconnect()
+        self.connected = False
+        if self.plc: self.plc.disconnect()
 
 #-----------------------------------------------------------------------------
 def testCase():
