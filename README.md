@@ -65,7 +65,12 @@ This project contains two sections:
 | S3new_192_168_10_71.smbp | PLC           | PLC-3 ladder diagram.                                        |
 | S7PLC1200.py             | python 3      | This module is used to connect to the siemens s7-1200 PLC.   |
 | serialCom.py             | python 3      | This module will inheritance the python built-in serial module with automatically serial port serach and connection function. |
+| pwrSibDisplay.py         | python3       | This module is used to create a transparent, no window board live substation control parameter simulation display frame which shows overlay on top of the CSI OT-Platform main HMI program. |
 | udpCom.py                | python 3      | This module will provide a UDP client and server communication API. |
+| tcpCom.py                | python 3      | This module will provide TCP client and server communication API. |
+| pwrSubParm.csv           | excel         | This file will save the 10 parameters data which used to simulate the substation working situation. |
+| run.bat                  |               | Program execution script for Windows user.                   |
+| BgCtrl.py                | python        | This module is used to create a background program controller: When we want to run a program in back ground with a loop inside, some time it is difficult for us to track whether the program is  running or stopped if there are lots of other similar background programs are also running. This module is used to create a record file to record the current background program situation for the user to check and control. |
 
 ------
 

@@ -504,9 +504,9 @@ class stateManager(object):
         self.loadCSVParm(os.path.join(os.path.dirname(__file__), CSV_VAL))
         self.AtkFlag = False # The flag to identify whether fetch the attack data.
         # Generator state dictionary.
-        self.genDict = {    'Freq': '50.00',    # frequence (dd.dd)
+        self.genDict = {    'Freq': '50.00',    # frequency (dd.dd)
                             'Volt': '11.00',    # voltage (dd.dd)
-                            'Fled': 'green',    # frequence led (green/amber/off)
+                            'Fled': 'green',    # frequency led (green/amber/off)
                             'Vled': 'green',    # voltage led (green/amber/off)
                             'Mled': 'green',    # motor led (green/amber/off)
                             'Pled': 'green',    # pump led (green/amber/off)
