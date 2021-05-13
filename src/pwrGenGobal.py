@@ -15,7 +15,7 @@ import os
 print("Current working directory is : %s" % os.getcwd())
 dirpath = os.path.dirname(__file__)
 print("Current source code location : %s" % dirpath)
-APP_NAME = 'Generator Manager [Ver:CORPLAB-2019-T3.1-P1]'
+APP_NAME = 'Generator Manager [Ver:CORPLAB-2021-T5F-A1]'
 
 #------<IMAGES PATH>-------------------------------------------------------------
 IMG_FD = 'img'
