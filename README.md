@@ -1,27 +1,51 @@
 # Power_Generator_Manager
-#### Introduction
+> All rights reserved by NUS-Singtel Cyber Security R&D Lab (Jun 2016 to Jun 2021)
 
-This project contains two sections:
+**Program Design Purpose**: We want to create a HMI program running on the monitor PC and an auto controller program running on raspberry PI to control the power generator simulator module. 
+
+[TOC]
+
+### Introduction
+
+The OT 3D Platform contents a power generator module which is used to simulate the power generation for the module’s inner and outer railway, train substation and system’s power supply. The power generator is directly controlled by an Arduino with signal(H/L) change, we use the USB cable connect the Raspberry PI to the Arduino to control the LEDs, LCD screen, smoke indicator frequency and siren with serial commands. The Arduino also has 4 pins to control the speed of moto and pump and the 4 pins are connected to the PLC with jumper wire. For the remote-control software part, we have implemented 2 programs: Power generator auto-control program (main controller) and Remote generator controller (HMI for user). The system connection is show below: 
+
+![](doc/img/hardwareconnection.png)
+
+The software contains two sections:
 
 **Power generator auto-control program**: This module will be running in the Raspberry PI to control the OT-Power Generator Module's hardware. It will send command to PLC and Arduino and receive the control request from the remove controller. The control program will do the adjust of the generator's motor and pump speed based on the loads in the system. 
 
 **Remote generator controller:** This module will provide a UI to connect to the power generator auto control program by UDP and display the generator states.
 
-###### Remote Controller UI 
+##### Remote Controller HMI UI 
 
 ![](doc/img/newUI.jpg)
 
-###### Situation Display UI
+##### Generator Situation Display UI
+
+This panel will show the currently situation of all the components (introduced in the section 1.1 hardware introduction) of the Generator, when the smoke is set to “slow”, the smoke icon shown in the panel will be changed to gray color. Blue color icon means setting is “fast”. When the alter raised, the top right “Alert” icon will appear and flash. Check the “Generator Pnl” checkbox in the main UI, this panel will pop up on the bottom of the screen and layout above all the windows. 
 
 ![](doc/img/record.gif)
 
+
+
 ------
 
-#### Program Setup
+### System/Program Design
 
-###### Development Environment: Python3.7.4
+Reference to design document in the doc folder : `doc/CSI OT 3D Platform Cyber Attack Power Generator Deisgn.docx` 
 
-###### Additional Lib/Software Need:
+
+
+------
+
+### System Program Setup
+
+##### Development Environment
+
+###### Python3.7.4
+
+##### Additional Lib/Software Need
 
 1. snap7 + python-snap7 (need to install for S71200 PLC control)
 
@@ -52,7 +76,11 @@ This project contains two sections:
 
 3. 
 
-###### Program File List: 
+##### Hardware Needed 
+
+![](doc/img/Generator View.png)
+
+##### Program File List
 
 | Program File             | Execution Env | Description                                                  |
 | ------------------------ | ------------- | ------------------------------------------------------------ |
@@ -74,7 +102,7 @@ This project contains two sections:
 
 ------
 
-#### Program Usage
+### Program Usage/Execution
 
 1. Set the test mode flag TEST_MD to False, set the IP address in pwGenRun.py to the Raspberry PI's IP. 
 
@@ -92,6 +120,30 @@ This project contains two sections:
 
 4. -
 
+
+
+
+
+------
+
+### Problem and Solution
+
+Refer to the doc: 
+
+- https://github.com/LiuYuancheng/Power_Generator_Manager/blob/master/doc/problemAndSolution.md
+- https://github.com/LiuYuancheng/Power_Generator_Manager/blob/master/doc/wxpython%20install%20error%20and%20solution.md
+
+
+
+------
+
+### Reference
+
+Detail design doc: https://github.com/LiuYuancheng/Power_Generator_Manager/blob/master/doc/CSI%20OT%203D%20Platform%20Cyber%20Attack%20Power%20Generator%20Deisgn.docx
+
+
+
 ------
 
 > Last edited by LiuYuancheng(liu_yuan_cheng@hotmail.com) at 17/04/2020
+
