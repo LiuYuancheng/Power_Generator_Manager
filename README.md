@@ -78,7 +78,7 @@ Reference to design document in the doc folder : `doc/CSI OT 3D Platform Cyber A
 
 ##### Hardware Needed 
 
-![](doc/img/Generator View.png)
+![](doc/img/GeneratorView.png)
 
 ##### Program File List
 
