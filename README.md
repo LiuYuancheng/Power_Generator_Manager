@@ -9,11 +9,11 @@ This project contains two sections:
 
 ###### Remote Controller UI 
 
-![](doc/newUI.jpg)
+![](doc/img/newUI.jpg)
 
 ###### Situation Display UI
 
-![](doc/record.gif)
+![](doc/img/record.gif)
 
 ------
 
@@ -42,7 +42,7 @@ This project contains two sections:
 
      Computer **>** System Property **>** Advanced system settings **>** Environment Variables **>** System variable: 
 
-     ![](doc/dll_Setup.png)
+     ![](doc/img/dll_Setup.png)
 
 2. wxPython
 
